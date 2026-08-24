@@ -121,7 +121,6 @@ export async function runFileComplaint(
   if (!ext.utr_or_transaction_id) missingFields.push('UTR_TRANSACTION_ID')
   if (!ext.amount_stolen) missingFields.push('AMOUNT')
   // Only ask for VPA_ACCOUNT if we don't have ANY destination info (VPA, phone, or name)
-  const hasDestinationInfo = !!(ext.destination_vpa_or_account || ext.recipient_phone || ext.recipient_name)
   if (!hasDestinationInfo) missingFields.push('VPA_ACCOUNT')
   if (!userLocation) missingFields.push('LOCATION')
   // Only ask for phone if not already provided AND not already asked in this conversation
