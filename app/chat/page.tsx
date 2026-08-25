@@ -437,7 +437,9 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // Enter sends; Shift+Enter inserts a newline. Ignore Enter while an IME
+    // composition is in progress so it doesn't send a half-typed word.
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       handleSend()
     }
@@ -453,6 +455,13 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
       return
     }
     setUploadedFile(file)
+    // After the native file picker closes, browsers restore focus to the file
+    // input / attach button, so pressing Enter would re-open the picker. Move
+    // focus to the textarea (after the restoration tick) so Enter sends instead.
+    setTimeout(() => {
+      ;(document.activeElement as HTMLElement | null)?.blur?.()
+      textareaRef.current?.focus()
+    }, 0)
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -607,8 +616,32 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
       <div className="bg-gray-900 border-t border-gray-800 p-4 flex-shrink-0" onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
         <div className="bg-gray-900 border border-gray-800 p-4 flex-shrink-0">
           <div className="flex gap-2 items-end">
-            <input type="file" ref={fileInputRef} onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])} accept="image/*,.pdf" className="hidden" />
-            <button onClick={() => fileInputRef.current?.click()} className="bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white p-3 rounded-xl transition-colors flex-shrink-0" title="Upload screenshot or PDF">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={(e) => {
+                const picked = e.target.files?.[0]
+                // Reset so selecting the same file again still fires onChange,
+                // and blur the input so it can't be re-triggered by Enter.
+                e.target.value = ''
+                e.target.blur()
+                if (picked) handleFileSelect(picked)
+              }}
+              accept="image/*,.pdf"
+              className="hidden"
+            />
+            <button
+              type="button"
+              tabIndex={-1}
+              onMouseDown={(e) => e.preventDefault()}
+              onKeyDown={(e) => {
+                // Clickable only: never let keyboard (Enter/Space) open the picker.
+                if (e.key === 'Enter' || e.key === ' ') e.preventDefault()
+              }}
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white p-3 rounded-xl transition-colors flex-shrink-0"
+              title="Upload screenshot or PDF"
+            >
               <Upload className="w-5 h-5" />
             </button>
             <button onClick={handleVoiceInput} className={`p-3 rounded-xl transition-colors flex-shrink-0 ${isListening ? 'bg-red-600 text-white animate-pulse' : 'bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white'}`} title={isListening ? 'Stop listening' : 'Start voice input'}>
