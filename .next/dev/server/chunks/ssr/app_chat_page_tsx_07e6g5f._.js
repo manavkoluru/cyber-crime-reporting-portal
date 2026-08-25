@@ -96,12 +96,12 @@ function TypingIndicator() {
                     className: "w-4 h-4 text-white"
                 }, void 0, false, {
                     fileName: "[project]/app/chat/page.tsx",
-                    lineNumber: 54,
+                    lineNumber: 53,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/chat/page.tsx",
-                lineNumber: 53,
+                lineNumber: 52,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -113,38 +113,38 @@ function TypingIndicator() {
                             className: "w-2 h-2 bg-gray-400 rounded-full animate-bounce"
                         }, void 0, false, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 58,
+                            lineNumber: 57,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"
                         }, void 0, false, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 59,
+                            lineNumber: 58,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"
                         }, void 0, false, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 60,
+                            lineNumber: 59,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/chat/page.tsx",
-                    lineNumber: 57,
+                    lineNumber: 56,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/chat/page.tsx",
-                lineNumber: 56,
+                lineNumber: 55,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/chat/page.tsx",
-        lineNumber: 52,
+        lineNumber: 51,
         columnNumber: 5
     }, this);
 }
@@ -154,24 +154,32 @@ function formatContent(text) {
             children: part.slice(2, -2)
         }, i, false, {
             fileName: "[project]/app/chat/page.tsx",
-            lineNumber: 71,
+            lineNumber: 70,
             columnNumber: 7
         }, this) : part.startsWith('*') && part.endsWith('*') ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
             children: part.slice(1, -1)
         }, i, false, {
             fileName: "[project]/app/chat/page.tsx",
-            lineNumber: 73,
+            lineNumber: 72,
             columnNumber: 7
         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
             children: part
         }, i, false, {
             fileName: "[project]/app/chat/page.tsx",
-            lineNumber: 75,
+            lineNumber: 74,
             columnNumber: 7
         }, this));
 }
 function ChecklistCard({ items }) {
-    const remaining = items.filter((i)=>!i.satisfied).length;
+    const [checked, setChecked] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])({});
+    const readyCount = items.filter((i)=>checked[i.id]).length;
+    const remaining = items.length - readyCount;
+    const toggle = (id)=>{
+        setChecked((prev)=>({
+                ...prev,
+                [id]: !prev[id]
+            }));
+    };
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "mt-2 bg-gray-900 border border-gray-700 rounded-xl p-3 not-italic",
         children: [
@@ -183,21 +191,21 @@ function ChecklistCard({ items }) {
                         children: "What you'll need"
                     }, void 0, false, {
                         fileName: "[project]/app/chat/page.tsx",
-                        lineNumber: 86,
+                        lineNumber: 91,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         className: `text-xs font-semibold ${remaining === 0 ? 'text-green-400' : 'text-orange-400'}`,
-                        children: remaining === 0 ? 'All set ✓' : `${items.length - remaining}/${items.length} ready`
+                        children: remaining === 0 ? 'All set ✓' : `${readyCount}/${items.length} ready`
                     }, void 0, false, {
                         fileName: "[project]/app/chat/page.tsx",
-                        lineNumber: 87,
+                        lineNumber: 92,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/chat/page.tsx",
-                lineNumber: 85,
+                lineNumber: 90,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
@@ -205,22 +213,27 @@ function ChecklistCard({ items }) {
                 children: items.map((item)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
                         className: "flex items-start gap-2",
                         children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                className: `mt-0.5 flex-shrink-0 w-4 h-4 rounded-full border flex items-center justify-center text-[10px] ${item.satisfied ? 'bg-green-600 border-green-600 text-white' : 'border-gray-500 text-transparent'}`,
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                type: "button",
+                                onClick: ()=>toggle(item.id),
+                                "aria-pressed": !!checked[item.id],
+                                className: `mt-0.5 flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center text-[10px] cursor-pointer ${checked[item.id] ? 'bg-green-600 border-green-600 text-white' : 'border-gray-500 text-transparent hover:border-gray-300'}`,
                                 children: "✓"
                             }, void 0, false, {
                                 fileName: "[project]/app/chat/page.tsx",
-                                lineNumber: 94,
+                                lineNumber: 99,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "cursor-pointer",
+                                onClick: ()=>toggle(item.id),
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: `text-sm ${item.satisfied ? 'text-gray-400 line-through' : 'text-gray-100'}`,
+                                        className: `text-sm ${checked[item.id] ? 'text-gray-400 line-through' : 'text-gray-100'}`,
                                         children: item.label
                                     }, void 0, false, {
                                         fileName: "[project]/app/chat/page.tsx",
-                                        lineNumber: 104,
+                                        lineNumber: 112,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -228,36 +241,36 @@ function ChecklistCard({ items }) {
                                         children: item.description
                                     }, void 0, false, {
                                         fileName: "[project]/app/chat/page.tsx",
-                                        lineNumber: 107,
+                                        lineNumber: 115,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/chat/page.tsx",
-                                lineNumber: 103,
+                                lineNumber: 111,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, item.id, true, {
                         fileName: "[project]/app/chat/page.tsx",
-                        lineNumber: 93,
+                        lineNumber: 98,
                         columnNumber: 11
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/app/chat/page.tsx",
-                lineNumber: 91,
+                lineNumber: 96,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/chat/page.tsx",
-        lineNumber: 84,
+        lineNumber: 89,
         columnNumber: 5
     }, this);
 }
 function MessageBubble({ message }) {
     const isUser = message.role === 'user';
-    const displayContent = message.content.replace('[[CHECKLIST]]', '');
+    const displayContent = message.content.replace(/\[\[CHECKLIST:[A-Z_]+\]\]/, '').replace('[[CHECKLIST]]', '');
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: `flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`,
         children: [
@@ -267,12 +280,12 @@ function MessageBubble({ message }) {
                     className: "w-4 h-4 text-white"
                 }, void 0, false, {
                     fileName: "[project]/app/chat/page.tsx",
-                    lineNumber: 124,
+                    lineNumber: 132,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/chat/page.tsx",
-                lineNumber: 123,
+                lineNumber: 131,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -283,7 +296,7 @@ function MessageBubble({ message }) {
                         items: message.metadata.checklist
                     }, void 0, false, {
                         fileName: "[project]/app/chat/page.tsx",
-                        lineNumber: 134,
+                        lineNumber: 142,
                         columnNumber: 11
                     }, this),
                     message.fileAttached && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -293,14 +306,14 @@ function MessageBubble({ message }) {
                                 className: "w-3 h-3"
                             }, void 0, false, {
                                 fileName: "[project]/app/chat/page.tsx",
-                                lineNumber: 138,
+                                lineNumber: 146,
                                 columnNumber: 13
                             }, this),
                             message.fileAttached
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/chat/page.tsx",
-                        lineNumber: 137,
+                        lineNumber: 145,
                         columnNumber: 11
                     }, this),
                     message.metadata?.goldenHour && !isUser && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -310,12 +323,12 @@ function MessageBubble({ message }) {
                             children: "⚡ GOLDEN HOUR ACTIVE – Funds may be recoverable!"
                         }, void 0, false, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 145,
+                            lineNumber: 153,
                             columnNumber: 15
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app/chat/page.tsx",
-                        lineNumber: 143,
+                        lineNumber: 151,
                         columnNumber: 11
                     }, this),
                     message.metadata?.ccn && !isUser && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -329,30 +342,30 @@ function MessageBubble({ message }) {
                                     children: message.metadata.ccn
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 155,
+                                    lineNumber: 163,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 153,
+                            lineNumber: 161,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app/chat/page.tsx",
-                        lineNumber: 152,
+                        lineNumber: 160,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/chat/page.tsx",
-                lineNumber: 127,
+                lineNumber: 135,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/chat/page.tsx",
-        lineNumber: 121,
+        lineNumber: 129,
         columnNumber: 5
     }, this);
 }
@@ -619,7 +632,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
         }
     };
     const handleKeyDown = (e)=>{
-        if (e.key === 'Enter' && e.shiftKey) {
+        if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSend();
         }
@@ -704,12 +717,12 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                 children: "Loading..."
             }, void 0, false, {
                 fileName: "[project]/app/chat/page.tsx",
-                lineNumber: 525,
+                lineNumber: 533,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/app/chat/page.tsx",
-            lineNumber: 524,
+            lineNumber: 532,
             columnNumber: 7
         }, this);
     }
@@ -729,7 +742,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                 children: "← Back"
                             }, void 0, false, {
                                 fileName: "[project]/app/chat/page.tsx",
-                                lineNumber: 535,
+                                lineNumber: 543,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
@@ -742,12 +755,12 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                             className: "w-5 h-5 text-white"
                                         }, void 0, false, {
                                             fileName: "[project]/app/chat/page.tsx",
-                                            lineNumber: 544,
+                                            lineNumber: 552,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/app/chat/page.tsx",
-                                        lineNumber: 543,
+                                        lineNumber: 551,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -757,7 +770,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                                 children: "National Cyber Crime Reporting Portal"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/chat/page.tsx",
-                                                lineNumber: 547,
+                                                lineNumber: 555,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -765,25 +778,25 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                                 children: "Instant Fraud Response, 24/7"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/chat/page.tsx",
-                                                lineNumber: 548,
+                                                lineNumber: 556,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/chat/page.tsx",
-                                        lineNumber: 546,
+                                        lineNumber: 554,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/chat/page.tsx",
-                                lineNumber: 542,
+                                lineNumber: 550,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/chat/page.tsx",
-                        lineNumber: 534,
+                        lineNumber: 542,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -797,12 +810,12 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                     children: "📞 1930"
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 554,
+                                    lineNumber: 562,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/app/chat/page.tsx",
-                                lineNumber: 553,
+                                lineNumber: 561,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -813,24 +826,24 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                     children: "Logout"
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 560,
+                                    lineNumber: 568,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/app/chat/page.tsx",
-                                lineNumber: 556,
+                                lineNumber: 564,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/chat/page.tsx",
-                        lineNumber: 552,
+                        lineNumber: 560,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/chat/page.tsx",
-                lineNumber: 533,
+                lineNumber: 541,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -842,25 +855,25 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                             message: message
                         }, message.id, false, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 568,
+                            lineNumber: 576,
                             columnNumber: 11
                         }, this)),
                     isLoading && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(TypingIndicator, {}, void 0, false, {
                         fileName: "[project]/app/chat/page.tsx",
-                        lineNumber: 570,
+                        lineNumber: 578,
                         columnNumber: 23
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         ref: messagesEndRef
                     }, void 0, false, {
                         fileName: "[project]/app/chat/page.tsx",
-                        lineNumber: 571,
+                        lineNumber: 579,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/chat/page.tsx",
-                lineNumber: 566,
+                lineNumber: 574,
                 columnNumber: 7
             }, this),
             messages.length === 1 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -871,12 +884,12 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                         children: action.label
                     }, action.label, false, {
                         fileName: "[project]/app/chat/page.tsx",
-                        lineNumber: 578,
+                        lineNumber: 586,
                         columnNumber: 13
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/app/chat/page.tsx",
-                lineNumber: 576,
+                lineNumber: 584,
                 columnNumber: 9
             }, this),
             uploadedFile && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -888,7 +901,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                             className: "w-3 h-3"
                         }, void 0, false, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 589,
+                            lineNumber: 597,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -896,7 +909,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                             children: uploadedFile.name
                         }, void 0, false, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 590,
+                            lineNumber: 598,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -906,23 +919,23 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                 className: "w-3.5 h-3.5"
                             }, void 0, false, {
                                 fileName: "[project]/app/chat/page.tsx",
-                                lineNumber: 592,
+                                lineNumber: 600,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 591,
+                            lineNumber: 599,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/chat/page.tsx",
-                    lineNumber: 588,
+                    lineNumber: 596,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/chat/page.tsx",
-                lineNumber: 587,
+                lineNumber: 595,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -947,7 +960,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                     className: "hidden"
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 602,
+                                    lineNumber: 610,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -958,12 +971,12 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                         className: "w-5 h-5"
                                     }, void 0, false, {
                                         fileName: "[project]/app/chat/page.tsx",
-                                        lineNumber: 604,
+                                        lineNumber: 612,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 603,
+                                    lineNumber: 611,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -974,18 +987,18 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                         className: "w-5 h-5"
                                     }, void 0, false, {
                                         fileName: "[project]/app/chat/page.tsx",
-                                        lineNumber: 607,
+                                        lineNumber: 615,
                                         columnNumber: 30
                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(Mic, {
                                         className: "w-5 h-5"
                                     }, void 0, false, {
                                         fileName: "[project]/app/chat/page.tsx",
-                                        lineNumber: 607,
+                                        lineNumber: 615,
                                         columnNumber: 63
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 606,
+                                    lineNumber: 614,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
@@ -997,7 +1010,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                     className: "flex-1 bg-gray-800 text-white placeholder-gray-500 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-600 min-h-[48px] max-h-[120px]"
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 609,
+                                    lineNumber: 617,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1008,18 +1021,18 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                         className: "w-5 h-5"
                                     }, void 0, false, {
                                         fileName: "[project]/app/chat/page.tsx",
-                                        lineNumber: 611,
+                                        lineNumber: 619,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 610,
+                                    lineNumber: 618,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 601,
+                            lineNumber: 609,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1031,7 +1044,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                     children: "📞 1930"
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 615,
+                                    lineNumber: 623,
                                     columnNumber: 54
                                 }, this),
                                 " • Mental Support: ",
@@ -1040,24 +1053,24 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                     children: "iCall 9152987821"
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 615,
+                                    lineNumber: 623,
                                     columnNumber: 123
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 614,
+                            lineNumber: 622,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/chat/page.tsx",
-                    lineNumber: 600,
+                    lineNumber: 608,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/chat/page.tsx",
-                lineNumber: 599,
+                lineNumber: 607,
                 columnNumber: 7
             }, this),
             showOTPModal && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1070,7 +1083,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                             children: "Verify Your Number"
                         }, void 0, false, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 624,
+                            lineNumber: 632,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1078,7 +1091,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                             children: otpSent ? `Enter the OTP sent to +91-${otpPhone.slice(0, 5)}****` : 'Phone number verification'
                         }, void 0, false, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 625,
+                            lineNumber: 633,
                             columnNumber: 13
                         }, this),
                         otpError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1086,7 +1099,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                             children: otpError
                         }, void 0, false, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 630,
+                            lineNumber: 638,
                             columnNumber: 15
                         }, this),
                         !otpSent ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -1096,7 +1109,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                     children: "We'll send a 4-6 digit code to your phone number."
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 637,
+                                    lineNumber: 645,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1107,7 +1120,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                             children: "Phone Number"
                                         }, void 0, false, {
                                             fileName: "[project]/app/chat/page.tsx",
-                                            lineNumber: 641,
+                                            lineNumber: 649,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1118,7 +1131,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                                     children: "+91"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app/chat/page.tsx",
-                                                    lineNumber: 643,
+                                                    lineNumber: 651,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1130,19 +1143,19 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                                     className: "flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-600"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app/chat/page.tsx",
-                                                    lineNumber: 646,
+                                                    lineNumber: 654,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/app/chat/page.tsx",
-                                            lineNumber: 642,
+                                            lineNumber: 650,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 640,
+                                    lineNumber: 648,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1152,13 +1165,13 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                     children: otpSending ? 'Sending...' : 'Send OTP'
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 656,
+                                    lineNumber: 664,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 636,
+                            lineNumber: 644,
                             columnNumber: 15
                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
                             children: [
@@ -1172,7 +1185,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                     disabled: otpVerifying
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 670,
+                                    lineNumber: 678,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1182,7 +1195,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                     children: otpVerifying ? 'Verifying...' : 'Verify OTP'
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 681,
+                                    lineNumber: 689,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1196,30 +1209,30 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
                                     children: "← Back to Phone Number"
                                 }, void 0, false, {
                                     fileName: "[project]/app/chat/page.tsx",
-                                    lineNumber: 692,
+                                    lineNumber: 700,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/chat/page.tsx",
-                            lineNumber: 669,
+                            lineNumber: 677,
                             columnNumber: 15
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/chat/page.tsx",
-                    lineNumber: 623,
+                    lineNumber: 631,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/chat/page.tsx",
-                lineNumber: 622,
+                lineNumber: 630,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/chat/page.tsx",
-        lineNumber: 531,
+        lineNumber: 539,
         columnNumber: 5
     }, this);
 }

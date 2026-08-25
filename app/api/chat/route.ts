@@ -6,6 +6,7 @@ import { runRouter } from '@/lib/agents/router'
 import { runFileComplaint } from '@/lib/agents/fileComplaint'
 import { runRetrieval } from '@/lib/agents/retrieval'
 import { runFallback } from '@/lib/agents/fallback'
+import { COMPLAINT_REQUIREMENTS } from '@/lib/complaintRequirements'
 
 export const maxDuration = 60 // Vercel function timeout (seconds)
 
@@ -120,10 +121,27 @@ export async function POST(req: NextRequest) {
         }
     }
 
+    // — Attach an upfront requirements checklist the first time a fraud type is identified
+    const fraudCategory = idaResult.extracted?.fraud_category
+    const intent = idaResult.extracted?.intent
+    const looksLikeAComplaint = intent === 'FILE_COMPLAINT' || intent === 'AMBIGUOUS'
+    const checklistAlreadyShown = history.some(
+      (msg: { role: string; content: string }) => msg.role === 'assistant' && msg.content.includes('[[CHECKLIST:')
+    )
+
+    let checklistMarker = ''
+    let checklistMetadata: Record<string, unknown> = {}
+    if (looksLikeAComplaint && fraudCategory && !checklistAlreadyShown) {
+      const items = COMPLAINT_REQUIREMENTS[fraudCategory] || COMPLAINT_REQUIREMENTS.UNKNOWN
+      checklistMetadata = { checklist: items }
+      checklistMarker = `[[CHECKLIST:${fraudCategory}]]`
+    }
+
     return NextResponse.json({
-      message: agentResponse.message,
+      message: agentResponse.message + checklistMarker,
       metadata: {
         ...agentResponse.metadata,
+        ...checklistMetadata,
         goldenHour: idaResult.extracted?.golden_hour_active === true,
         route: route.route_to,
       },

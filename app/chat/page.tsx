@@ -18,7 +18,6 @@ interface ChecklistItem {
   id: string
   label: string
   description: string
-  satisfied: boolean
 }
 
 interface MessageMetadata {
@@ -78,30 +77,39 @@ function formatContent(text: string) {
 }
 
 function ChecklistCard({ items }: { items: ChecklistItem[] }) {
-  const remaining = items.filter((i) => !i.satisfied).length
+  const [checked, setChecked] = useState<Record<string, boolean>>({})
+  const readyCount = items.filter((i) => checked[i.id]).length
+  const remaining = items.length - readyCount
+
+  const toggle = (id: string) => {
+    setChecked((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
 
   return (
     <div className="mt-2 bg-gray-900 border border-gray-700 rounded-xl p-3 not-italic">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-bold text-gray-200 uppercase tracking-wide">What you'll need</span>
         <span className={`text-xs font-semibold ${remaining === 0 ? 'text-green-400' : 'text-orange-400'}`}>
-          {remaining === 0 ? 'All set ✓' : `${items.length - remaining}/${items.length} ready`}
+          {remaining === 0 ? 'All set ✓' : `${readyCount}/${items.length} ready`}
         </span>
       </div>
       <ul className="space-y-2">
         {items.map((item) => (
           <li key={item.id} className="flex items-start gap-2">
-            <span
-              className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded-full border flex items-center justify-center text-[10px] ${
-                item.satisfied
+            <button
+              type="button"
+              onClick={() => toggle(item.id)}
+              aria-pressed={!!checked[item.id]}
+              className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center text-[10px] cursor-pointer ${
+                checked[item.id]
                   ? 'bg-green-600 border-green-600 text-white'
-                  : 'border-gray-500 text-transparent'
+                  : 'border-gray-500 text-transparent hover:border-gray-300'
               }`}
             >
               ✓
-            </span>
-            <div>
-              <div className={`text-sm ${item.satisfied ? 'text-gray-400 line-through' : 'text-gray-100'}`}>
+            </button>
+            <div className="cursor-pointer" onClick={() => toggle(item.id)}>
+              <div className={`text-sm ${checked[item.id] ? 'text-gray-400 line-through' : 'text-gray-100'}`}>
                 {item.label}
               </div>
               <div className="text-xs text-gray-500">{item.description}</div>
@@ -115,7 +123,7 @@ function ChecklistCard({ items }: { items: ChecklistItem[] }) {
 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user'
-  const displayContent = message.content.replace('[[CHECKLIST]]', '')
+  const displayContent = message.content.replace(/\[\[CHECKLIST:[A-Z_]+\]\]/, '').replace('[[CHECKLIST]]', '')
 
   return (
     <div className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -429,7 +437,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
