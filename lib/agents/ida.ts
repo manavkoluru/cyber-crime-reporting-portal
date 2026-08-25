@@ -73,6 +73,7 @@ CRITICAL RULES FOR ALL EXTRACTION:
 – time_since_fraud_minutes: Minutes since fraud occurred (CALCULATE from visible timestamp and current time)
 – time_display: Human-friendly format: "2 hours ago" | "1 day ago" | "3 weeks ago" (based on minutes)
 – user_phone: User's registered mobile number
+– user_location: User's pincode or city (only from what the user has explicitly stated)
 – golden_hour_active: true if time_since_fraud_minutes < 120, false otherwise
 
 ## Important: Reuse Previously Extracted Data
@@ -103,6 +104,7 @@ IMPORTANT: Return ONLY valid JSON object. Do not add any text before or after JS
     "payment_platform": null,
     "time_since_fraud_minutes": null,
     "user_phone": null,
+    "user_location": null,
     "golden_hour_active": false
   },
   "confidence": 0.85,
@@ -124,6 +126,7 @@ export interface IDARaw {
     payment_platform?: string | null
     time_since_fraud_minutes?: number | null
     user_phone?: string | null
+    user_location?: string | null
     golden_hour_active?: boolean
   }
   confidence?: number
@@ -157,7 +160,7 @@ export async function runIDA(
 - UTR: ${accumulatedExtracted.utr_or_transaction_id || 'Not yet extracted'}
 - Amount: ${accumulatedExtracted.amount_stolen || 'Not yet extracted'}
 - VPA/Account: ${accumulatedExtracted.destination_vpa_or_account || 'Not yet extracted'}
-- Location: From previous messages (refer to history)
+- Location: ${accumulatedExtracted.user_location || 'Not yet extracted'}
 - Time: ${accumulatedExtracted.time_since_fraud_minutes || 'Not yet calculated'}
 - Platform: ${accumulatedExtracted.payment_platform || 'Not yet identified'}
 

@@ -388,6 +388,7 @@ Now I need a few more details to file your complaint:
           payment_platform: ext.payment_platform,
           time_since_fraud_minutes: ext.time_since_fraud_minutes,
           user_phone: ext.user_phone,
+          user_location: userLocation,
           golden_hour_active: ext.golden_hour_active,
         },
       },

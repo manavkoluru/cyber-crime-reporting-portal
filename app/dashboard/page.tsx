@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import ProfileMenu from '@/app/components/ProfileMenu'
 
 export default function Dashboard() {
   const router = useRouter()
@@ -28,15 +29,6 @@ export default function Dashboard() {
 
     checkSession()
   }, [router])
-
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-      router.push('/login')
-    } catch (error) {
-      console.error('Logout failed:', error)
-    }
-  }
 
   if (isLoading) {
     return (
@@ -78,12 +70,7 @@ export default function Dashboard() {
             <a href="tel:1930" className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold">
               📞 1930 Helpline
             </a>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-semibold"
-            >
-              🚪 Logout
-            </button>
+            <ProfileMenu />
           </div>
         </div>
       </nav>

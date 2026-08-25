@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getAllComplaints, getComplaintsByPhone } from '@/lib/store'
+import { getAllComplaints } from '@/lib/store'
+import ProfileMenu from '@/app/components/ProfileMenu'
 
 interface Complaint {
   id: string
@@ -20,15 +21,12 @@ interface Complaint {
 export default function TrackComplaint() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
-  const [step, setStep] = useState<'phone' | 'otp' | 'results'>('phone')
-  const [phone, setPhone] = useState('')
-  const [otp, setOtp] = useState('')
-  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null)
   const [verifiedPhone, setVerifiedPhone] = useState('')
+  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null)
   const [complaints, setComplaints] = useState<Complaint[]>([])
 
   useEffect(() => {
-    // Check if user has valid session
+    // Check if user has valid session and load their complaints directly
     const checkSession = async () => {
       try {
         const res = await fetch('/api/auth/me', { method: 'GET', credentials: 'include' })
@@ -37,6 +35,20 @@ export default function TrackComplaint() {
           router.push('/login')
           return
         }
+
+        const session = await res.json()
+        const phone = session.phone
+
+        const all = getAllComplaints()
+        const userComplaints = all
+          .filter(c => c.complainantPhone === phone)
+          .map(c => ({
+            ...c,
+            timestamp: new Date(c.timestamp),
+          })) as Complaint[]
+
+        setComplaints(userComplaints)
+        setVerifiedPhone(phone)
         setIsAuthenticated(true)
       } catch (error) {
         console.error('Session check failed:', error)
@@ -47,53 +59,12 @@ export default function TrackComplaint() {
     checkSession()
   }, [router])
 
-  const handlePhoneSubmit = () => {
-    if (phone.match(/^\d{10}$/)) {
-      setStep('otp')
-    }
-  }
-
-  const handleOTPSubmit = () => {
-    if (otp.match(/^\d{4,6}$/)) {
-      // Verify and fetch complaints
-      const all = getAllComplaints()
-      const userComplaints = all
-        .filter(c => c.complainantPhone === phone)
-        .map(c => ({
-          ...c,
-          timestamp: new Date(c.timestamp),
-        })) as Complaint[]
-
-      setComplaints(userComplaints)
-      setVerifiedPhone(phone)
-      setStep('results')
-    }
-  }
-
   const handleBack = () => {
     if (window.history.length > 1) {
       window.history.back()
     } else {
       window.location.href = '/dashboard'
     }
-  }
-
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-      router.push('/login')
-    } catch (error) {
-      console.error('Logout failed:', error)
-    }
-  }
-
-  const handleReset = () => {
-    setStep('phone')
-    setPhone('')
-    setOtp('')
-    setVerifiedPhone('')
-    setComplaints([])
-    setSelectedComplaint(null)
   }
 
   const getStatusColor = (status: string) => {
@@ -161,102 +132,17 @@ export default function TrackComplaint() {
             <a href="tel:1930" className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold">
               📞 1930
             </a>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-semibold"
-            >
-              🚪 Logout
-            </button>
+            <ProfileMenu />
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {step === 'phone' && (
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-8 mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2">Track Your Complaint</h2>
-            <p className="text-slate-400 mb-6">Enter your registered phone number to view all your complaints</p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-white mb-2">Registered Phone Number</label>
-                <input
-                  type="tel"
-                  placeholder="10-digit phone number..."
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  maxLength={10}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-red-500/50 text-lg tracking-widest"
-                />
-                <p className="text-slate-500 text-xs mt-1">Format: 10 digits</p>
-              </div>
-
-              <button
-                onClick={handlePhoneSubmit}
-                disabled={!phone.match(/^\d{10}$/)}
-                className="w-full py-3 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
-              >
-                Send OTP
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 'otp' && (
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-8 mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2">Verify Your Phone</h2>
-            <p className="text-slate-400 mb-6">OTP sent to +91-{phone.slice(-4).padStart(10, '*')}</p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-white mb-2">Enter OTP (4-6 digits)</label>
-                <input
-                  type="text"
-                  placeholder="000000"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  maxLength={6}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-red-500/50 text-center text-2xl tracking-widest font-mono"
-                />
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={handleOTPSubmit}
-                  disabled={!otp.match(/^\d{4,6}$/)}
-                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
-                >
-                  Verify
-                </button>
-                <button
-                  onClick={() => {
-                    setStep('phone')
-                    setOtp('')
-                  }}
-                  className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition"
-                >
-                  Back
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {step === 'results' && (
-          <>
             <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-8 mb-8">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-1">Your Complaints</h2>
-                  <p className="text-slate-400">Phone: +91-{verifiedPhone.slice(0, 5)}{verifiedPhone.slice(5).replace(/./g, '*')}</p>
-                </div>
-                <button
-                  onClick={handleReset}
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition"
-                >
-                  Change Number
-                </button>
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-1">Your Complaints</h2>
+                <p className="text-slate-400">Phone: +91-{verifiedPhone.slice(0, 5)}{verifiedPhone.slice(5).replace(/./g, '*')}</p>
               </div>
             </div>
 
@@ -427,8 +313,6 @@ export default function TrackComplaint() {
                 </a>
               </div>
             )}
-          </>
-        )}
       </div>
     </div>
   )

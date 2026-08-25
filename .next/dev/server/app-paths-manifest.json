@@ -1,0 +1,6 @@
+{
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/chat/page": "app/chat/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/track-complaint/page": "app/track-complaint/page.js"
+}

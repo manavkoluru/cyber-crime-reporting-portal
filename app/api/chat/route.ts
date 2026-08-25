@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
     switch (route.route_to) {
       case 'FILE_COMPLAINT_AGENT':
         // Pass extracted data to complaint agent to maintain context and pre-fill phone from session
-        agentResponse = await runFileComplaint(openai, message, history, idaResult, route, undefined, fileBase64, fileMediaType, idaResult.extracted, phoneFromSession)
+        agentResponse = await runFileComplaint(openai, message, history, idaResult, route, idaResult.extracted?.user_location || undefined, fileBase64, fileMediaType, idaResult.extracted, phoneFromSession)
         break
       case 'RETRIEVAL_AGENT':
         // Pass phone from session so user doesn't need to re-enter it
