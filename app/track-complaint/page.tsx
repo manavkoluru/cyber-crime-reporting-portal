@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getAllComplaints } from '@/lib/store'
 import ProfileMenu from '@/app/components/ProfileMenu'
+import { GovHeader, GovFooter } from '@/app/components/GovHeader'
 
 interface Complaint {
   id: string
@@ -26,12 +27,10 @@ export default function TrackComplaint() {
   const [complaints, setComplaints] = useState<Complaint[]>([])
 
   useEffect(() => {
-    // Check if user has valid session and load their complaints directly
     const checkSession = async () => {
       try {
         const res = await fetch('/api/auth/me', { method: 'GET', credentials: 'include' })
         if (!res.ok) {
-          // No valid session, redirect to login
           router.push('/login')
           return
         }
@@ -59,219 +58,172 @@ export default function TrackComplaint() {
     checkSession()
   }, [router])
 
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      window.history.back()
-    } else {
-      window.location.href = '/dashboard'
-    }
-  }
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'FILED':
-        return 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+        return 'bg-blue-50 text-blue-700 border-blue-200'
       case 'INVESTIGATING':
-        return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
+        return 'bg-yellow-50 text-yellow-700 border-yellow-200'
       case 'RESOLVED':
-        return 'bg-green-500/20 text-green-300 border-green-500/30'
+        return 'bg-green-50 text-green-700 border-green-200'
       case 'REJECTED':
-        return 'bg-red-500/20 text-red-300 border-red-500/30'
+        return 'bg-red-50 text-red-700 border-red-200'
       default:
-        return 'bg-slate-500/20 text-slate-300 border-slate-500/30'
-    }
-  }
-
-  const getStatusEmoji = (status: string) => {
-    switch (status) {
-      case 'FILED':
-        return '📋'
-      case 'INVESTIGATING':
-        return '🔍'
-      case 'RESOLVED':
-        return '✅'
-      case 'REJECTED':
-        return '❌'
-      default:
-        return '⏳'
+        return 'bg-gray-100 text-gray-700 border-gray-200'
     }
   }
 
   if (isAuthenticated === null) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="text-white">Loading...</div>
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-gray-600">Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Navigation */}
-      <nav className="bg-slate-950/50 border-b border-slate-700/50 sticky top-0 z-40 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleBack}
-              className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-white"
-              title="Go back"
-            >
-              ← Back
-            </button>
-            <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition">
-              <div className="bg-gradient-to-br from-red-600 to-red-700 p-2 rounded-lg">
-                <span className="text-2xl">🛡️</span>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-white">Track Complaint</h1>
-                <p className="text-xs text-slate-400">Monitor your case status</p>
-              </div>
-            </Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <a href="tel:1930" className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold">
-              📞 1930
+    <div className="min-h-screen bg-gray-50">
+      <GovHeader
+        title="Track your Complaint"
+        rightSlot={
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <a href="tel:1930" className="px-4 py-2 bg-[#FF9933] hover:bg-[#e6862b] text-white rounded text-sm font-semibold">
+              1930
             </a>
             <ProfileMenu />
           </div>
-        </div>
-      </nav>
+        }
+      />
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-8 mb-8">
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-1">Your Complaints</h2>
-                <p className="text-slate-400">Phone: +91-{verifiedPhone.slice(0, 5)}{verifiedPhone.slice(5).replace(/./g, '*')}</p>
-              </div>
+        <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-8 mb-8">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-1">Your Complaints</h2>
+            <p className="text-gray-500">Phone: +91-{verifiedPhone.slice(0, 5)}{verifiedPhone.slice(5).replace(/./g, '*')}</p>
+          </div>
+        </div>
+
+        {/* Complaints List */}
+        {complaints.length === 0 ? (
+          <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-12 text-center">
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">No Complaints Found</h3>
+            <p className="text-gray-500 mb-6">You haven&apos;t filed any complaints yet.</p>
+            <Link
+              href="/chat"
+              className="inline-block px-6 py-3 bg-[#0b3d91] hover:bg-[#0a3480] text-white font-semibold rounded transition"
+            >
+              File New Complaint
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">
+                {complaints.length} Complaint{complaints.length !== 1 ? 's' : ''} Found
+              </h3>
             </div>
 
-            {/* Complaints List */}
-            {complaints.length === 0 ? (
-              <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-12 text-center">
-                <div className="text-4xl mb-4">📭</div>
-                <h3 className="text-xl font-semibold text-white mb-2">No Complaints Found</h3>
-                <p className="text-slate-400 mb-6">You haven't filed any complaints yet.</p>
-                <Link
-                  href="/chat"
-                  className="inline-block px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition"
-                >
-                  File New Complaint
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-white">
-                    {complaints.length} Complaint{complaints.length !== 1 ? 's' : ''} Found
-                  </h3>
-                </div>
-
-                {complaints.map((complaint) => (
+            {complaints.map((complaint) => (
               <div
                 key={complaint.id}
                 onClick={() => setSelectedComplaint(complaint)}
-                className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/80 hover:bg-slate-750/50 transition cursor-pointer group"
+                className="bg-white border border-gray-200 shadow-sm rounded-lg p-6 hover:shadow-md transition cursor-pointer group border-l-4 border-l-[#0b3d91]"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <code className="bg-slate-900 text-green-400 px-3 py-1 rounded text-sm font-mono">
+                      <code className="bg-gray-100 text-[#0b3d91] px-3 py-1 rounded text-sm font-mono">
                         {complaint.ccn}
                       </code>
                       <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(complaint.status)}`}>
-                        {getStatusEmoji(complaint.status)} {complaint.status}
+                        {complaint.status}
                       </span>
                     </div>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-gray-500 text-sm">
                       Filed: {new Date(complaint.timestamp).toLocaleDateString('en-IN')}
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-white">₹{complaint.amount.toLocaleString()}</div>
-                    <p className="text-slate-400 text-xs">{complaint.paymentPlatform}</p>
+                    <div className="text-2xl font-bold text-gray-800">₹{complaint.amount.toLocaleString()}</div>
+                    <p className="text-gray-500 text-xs">{complaint.paymentPlatform}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-slate-500 text-xs">Transaction ID</p>
-                    <p className="text-white font-mono">{complaint.utr}</p>
+                    <p className="text-gray-400 text-xs">Transaction ID</p>
+                    <p className="text-gray-800 font-mono">{complaint.utr}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500 text-xs">Receiver</p>
-                    <p className="text-white truncate">{complaint.receiver}</p>
+                    <p className="text-gray-400 text-xs">Receiver</p>
+                    <p className="text-gray-800 truncate">{complaint.receiver}</p>
                   </div>
                 </div>
 
-                <button className="w-full mt-4 py-2 bg-slate-700 group-hover:bg-slate-600 text-white font-semibold rounded-lg transition">
-                  View Details →
+                <button className="w-full mt-4 py-2 bg-gray-100 group-hover:bg-gray-200 text-gray-700 font-semibold rounded transition">
+                  View Details &rarr;
                 </button>
               </div>
-                ))}
-              </div>
-            )}
+            ))}
+          </div>
+        )}
 
-            {/* Selected Complaint Details */}
-            {selectedComplaint && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-slate-900 border border-slate-700/50 rounded-2xl max-w-2xl w-full max-h-96 overflow-y-auto">
-              <div className="sticky top-0 bg-slate-900 border-b border-slate-700/50 p-6 flex items-center justify-between">
-                <h3 className="text-2xl font-bold text-white">Complaint Details</h3>
+        {/* Selected Complaint Details */}
+        {selectedComplaint && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+            <div className="bg-white border border-gray-200 rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto shadow-xl">
+              <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+                <h3 className="text-2xl font-bold text-gray-800">Complaint Details</h3>
                 <button
                   onClick={() => setSelectedComplaint(null)}
-                  className="text-slate-400 hover:text-white text-2xl"
+                  className="text-gray-400 hover:text-gray-700 text-2xl"
                 >
                   ✕
                 </button>
               </div>
 
               <div className="p-6 space-y-6">
-                {/* CCN and Status */}
-                <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-                  <p className="text-slate-400 text-sm mb-2">Cyber Crime Number</p>
-                  <code className="text-green-400 text-xl font-mono font-bold">{selectedComplaint.ccn}</code>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <p className="text-gray-500 text-sm mb-2">Cyber Crime Number</p>
+                  <code className="text-[#0b3d91] text-xl font-mono font-bold">{selectedComplaint.ccn}</code>
                   <div className="mt-4">
-                    <p className="text-slate-400 text-sm mb-2">Current Status</p>
+                    <p className="text-gray-500 text-sm mb-2">Current Status</p>
                     <span className={`inline-block px-4 py-2 rounded-full text-sm font-semibold border ${getStatusColor(selectedComplaint.status)}`}>
-                      {getStatusEmoji(selectedComplaint.status)} {selectedComplaint.status}
+                      {selectedComplaint.status}
                     </span>
                   </div>
                 </div>
 
-                {/* Transaction Details */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-                    <p className="text-slate-400 text-xs mb-2">Amount</p>
-                    <p className="text-2xl font-bold text-white">₹{selectedComplaint.amount.toLocaleString()}</p>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <p className="text-gray-400 text-xs mb-2">Amount</p>
+                    <p className="text-2xl font-bold text-gray-800">₹{selectedComplaint.amount.toLocaleString()}</p>
                   </div>
-                  <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-                    <p className="text-slate-400 text-xs mb-2">Platform</p>
-                    <p className="text-lg font-semibold text-white">{selectedComplaint.paymentPlatform}</p>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <p className="text-gray-400 text-xs mb-2">Platform</p>
+                    <p className="text-lg font-semibold text-gray-800">{selectedComplaint.paymentPlatform}</p>
                   </div>
                 </div>
 
-                {/* Transaction ID */}
-                <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-                  <p className="text-slate-400 text-xs mb-2">Transaction ID / UTR</p>
-                  <code className="text-white font-mono break-all">{selectedComplaint.utr}</code>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <p className="text-gray-400 text-xs mb-2">Transaction ID / UTR</p>
+                  <code className="text-gray-800 font-mono break-all">{selectedComplaint.utr}</code>
                 </div>
 
-                {/* Receiver */}
-                <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-                  <p className="text-slate-400 text-xs mb-2">Receiver VPA / Account</p>
-                  <p className="text-white">{selectedComplaint.receiver}</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <p className="text-gray-400 text-xs mb-2">Receiver VPA / Account</p>
+                  <p className="text-gray-800">{selectedComplaint.receiver}</p>
                 </div>
 
-                {/* Timeline */}
-                <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-                  <p className="text-slate-400 text-xs mb-3">Timeline</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <p className="text-gray-400 text-xs mb-3">Timeline</p>
                   <div className="space-y-2">
                     <div className="flex items-start gap-3">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0" />
+                      <div className="w-2 h-2 bg-[#138808] rounded-full mt-2 flex-shrink-0" />
                       <div>
-                        <p className="text-white font-semibold">Complaint Filed</p>
-                        <p className="text-slate-400 text-sm">{new Date(selectedComplaint.timestamp).toLocaleDateString('en-IN', {
+                        <p className="text-gray-800 font-semibold">Complaint Filed</p>
+                        <p className="text-gray-500 text-sm">{new Date(selectedComplaint.timestamp).toLocaleDateString('en-IN', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
@@ -283,37 +235,38 @@ export default function TrackComplaint() {
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex gap-3 pt-4">
                   <button
                     onClick={() => setSelectedComplaint(null)}
-                    className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition"
+                    className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded transition"
                   >
                     Close
                   </button>
                   <a
                     href="tel:1930"
-                    className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition text-center"
+                    className="flex-1 py-2 bg-[#0b3d91] hover:bg-[#0a3480] text-white font-semibold rounded transition text-center"
                   >
                     Call 1930
                   </a>
                 </div>
               </div>
             </div>
-            </div>
-            )}
+          </div>
+        )}
 
-            {/* Footer CTA */}
-            {complaints.length > 0 && (
-              <div className="mt-12 bg-gradient-to-r from-red-600/20 to-red-700/20 border border-red-600/50 rounded-2xl p-8 text-center">
-                <h3 className="text-2xl font-bold text-white mb-3">Need More Help?</h3>
-                <p className="text-slate-300 mb-6">Our support team is available 24/7 to assist you.</p>
-                <a href="tel:1930" className="inline-block px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition">
-                  Call 1930 Helpline
-                </a>
-              </div>
-            )}
+        {/* Footer CTA */}
+        {complaints.length > 0 && (
+          <div className="mt-12 bg-[#fff4e5] border border-[#FF9933]/40 rounded-lg p-8 text-center">
+            <h3 className="text-2xl font-bold text-gray-800 mb-3">Need More Help?</h3>
+            <p className="text-gray-600 mb-6">Our support team is available 24/7 to assist you.</p>
+            <a href="tel:1930" className="inline-block px-6 py-3 bg-[#0b3d91] hover:bg-[#0a3480] text-white font-semibold rounded transition">
+              Call 1930 Helpline
+            </a>
+          </div>
+        )}
       </div>
+
+      <GovFooter />
     </div>
   )
 }

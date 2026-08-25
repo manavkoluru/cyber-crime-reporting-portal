@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { GovHeader, GovFooter } from '@/app/components/GovHeader'
 
 interface User {
   userId: string
@@ -14,10 +15,8 @@ interface User {
 export default function HomePage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user is already logged in
     const checkAuth = async () => {
       try {
         const res = await fetch('/api/auth/me', { credentials: 'include' })
@@ -27,8 +26,6 @@ export default function HomePage() {
         }
       } catch (err) {
         // Not logged in
-      } finally {
-        setIsLoading(false)
       }
     }
 
@@ -46,65 +43,52 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Navigation */}
-      <nav className="bg-slate-950/50 border-b border-slate-700/50 sticky top-0 z-40 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition">
-            <div className="bg-gradient-to-br from-red-600 to-red-700 p-2 rounded-lg">
-              <span className="text-2xl">🛡️</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Cyber Crime Portal</h1>
-              <p className="text-xs text-slate-400">National Reporting & Response Platform</p>
-            </div>
-          </Link>
-
-          <div className="flex items-center gap-4">
-            {user ? (
-              <>
-                <div className="text-right hidden sm:block">
-                  <p className="text-sm font-medium text-white">{user.username}</p>
-                  <p className="text-xs text-slate-400">{user.role}</p>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-semibold transition"
-                >
-                  🚪 Logout
-                </button>
-              </>
-            ) : (
-              <Link
-                href="/login"
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition"
+    <div className="min-h-screen bg-gray-50">
+      <GovHeader
+        rightSlot={
+          user ? (
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-semibold text-gray-800">{user.username}</p>
+                <p className="text-xs text-gray-500">{user.role}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm font-semibold transition border border-gray-300"
               >
-                🔐 Login
-              </Link>
-            )}
-          </div>
-        </div>
-      </nav>
+                Logout
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="px-4 py-2 bg-[#0b3d91] hover:bg-[#0a3480] text-white rounded text-sm font-semibold transition flex-shrink-0"
+            >
+              Login
+            </Link>
+          )
+        }
+      />
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-slate-800 to-slate-700 border-b border-slate-600/50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-5xl font-bold text-white mb-4">Cyber Crime Reporting Portal</h2>
-          <p className="text-slate-300 text-xl max-w-2xl mx-auto mb-8">
-            AI-powered platform for instant cyber fraud reporting, complaint tracking, and real-time guidance. Available 24/7.
+      <div className="bg-[#0b3d91] py-16 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+          <h2 className="text-3xl sm:text-5xl font-bold text-white mb-4">National Cyber Crime Reporting Portal</h2>
+          <p className="text-blue-100 text-lg sm:text-xl max-w-2xl mx-auto mb-8">
+            File your complaint in under 2 minutes. Instant guidance, real-time tracking, available 24/7.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/chat"
-              className="px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition shadow-lg inline-block"
+              className="px-8 py-3 bg-[#FF9933] hover:bg-[#e6862b] text-white font-semibold rounded transition shadow-lg inline-block"
             >
-              🚀 Report Fraud Now
+              Report Fraud Now
             </Link>
             <a
               href="tel:1930"
-              className="px-8 py-3 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition inline-block"
+              className="px-8 py-3 bg-white hover:bg-gray-100 text-[#0b3d91] font-semibold rounded transition inline-block"
             >
-              📞 Call 1930 Helpline (24/7)
+              Call 1930 Helpline (24/7)
             </a>
           </div>
         </div>
@@ -115,76 +99,68 @@ export default function HomePage() {
         {/* Key Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
           {[
-            { icon: '📋', label: 'Complaints Processed', value: '2.5M+' },
-            { icon: '💰', label: 'Amount Recovered', value: '₹850Cr+' },
-            { icon: '⚖️', label: 'Active Cases', value: '45K+' },
-            { icon: '⚡', label: 'Response Time', value: '< 24hrs' },
+            { label: 'Complaints Processed', value: '2.5M+' },
+            { label: 'Amount Recovered', value: '₹850Cr+' },
+            { label: 'Active Cases', value: '45K+' },
+            { label: 'Response Time', value: '< 24hrs' },
           ].map((stat, i) => (
-            <div key={i} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 text-center">
-              <div className="text-4xl mb-3">{stat.icon}</div>
-              <div className="text-2xl font-bold text-white">{stat.value}</div>
-              <div className="text-sm text-slate-400">{stat.label}</div>
+            <div key={i} className="bg-white border border-gray-200 shadow-sm rounded-lg p-6 text-center">
+              <div className="text-3xl font-bold text-[#0b3d91]">{stat.value}</div>
+              <div className="text-sm text-gray-600 mt-1">{stat.label}</div>
             </div>
           ))}
         </div>
 
         {/* Features Grid */}
         <div className="mb-16">
-          <h3 className="text-3xl font-bold text-white mb-8 text-center">Why Report Here?</h3>
+          <h3 className="text-3xl font-bold text-gray-800 mb-8 text-center">Why Report Here?</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
-                icon: '🤖',
-                title: 'AI-Powered Assistance',
-                desc: 'Our intelligent assistant guides you through filing a complaint in just 3 steps.',
+                title: 'Instant Guided Filing',
+                desc: 'We guide you step by step — most complaints filed in under 2 minutes.',
               },
               {
-                icon: '📸',
                 title: 'Screenshot Analysis',
-                desc: 'Upload your transaction screenshot and our AI extracts all details automatically.',
+                desc: 'Upload your transaction screenshot and we pull out all the details automatically.',
               },
               {
-                icon: '🔥',
                 title: 'Golden Hour Detection',
                 desc: 'Get instant alerts if your fraud is within 2 hours – maximum recovery window.',
               },
               {
-                icon: '📱',
                 title: 'Mobile Friendly',
                 desc: 'File complaints on any device, anywhere, anytime. No installation needed.',
               },
               {
-                icon: '🔍',
                 title: 'Real-Time Tracking',
                 desc: 'Track your complaint status live and get updates via SMS/call.',
               },
               {
-                icon: '🛡️',
                 title: 'Secure & Private',
                 desc: 'Your data is encrypted and handled by government cyber agencies.',
               },
             ].map((feature, i) => (
               <div
                 key={i}
-                className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/80 transition"
+                className="bg-white border border-gray-200 shadow-sm rounded-lg p-6 hover:shadow-md transition border-t-4 border-t-[#0b3d91]"
               >
-                <div className="text-4xl mb-3">{feature.icon}</div>
-                <h4 className="text-lg font-semibold text-white mb-2">{feature.title}</h4>
-                <p className="text-slate-400 text-sm">{feature.desc}</p>
+                <h4 className="text-lg font-semibold text-gray-800 mb-2">{feature.title}</h4>
+                <p className="text-gray-600 text-sm">{feature.desc}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* How It Works */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-8 mb-16">
-          <h3 className="text-3xl font-bold text-white mb-8 text-center">How It Works – 3 Simple Steps</h3>
+        <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-8 mb-16">
+          <h3 className="text-3xl font-bold text-gray-800 mb-8 text-center">How It Works – 3 Simple Steps</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
                 step: '1',
                 title: 'Upload Screenshot',
-                desc: 'Share a screenshot of your transaction or fraud. Our AI analyzes it instantly.',
+                desc: 'Share a screenshot of your transaction or fraud. We read it and pull out the details instantly.',
               },
               {
                 step: '2',
@@ -200,13 +176,13 @@ export default function HomePage() {
               <div key={i} className="relative">
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0">
-                    <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-red-600 text-white font-bold text-lg">
+                    <div className="flex items-center justify-center h-12 w-12 rounded-full bg-[#0b3d91] text-white font-bold text-lg">
                       {item.step}
                     </div>
                   </div>
                   <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-white mb-2">{item.title}</h4>
-                    <p className="text-slate-400">{item.desc}</p>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">{item.title}</h4>
+                    <p className="text-gray-600">{item.desc}</p>
                   </div>
                 </div>
               </div>
@@ -215,22 +191,22 @@ export default function HomePage() {
         </div>
 
         {/* CTA Section */}
-        <div className="bg-gradient-to-r from-red-600/20 to-red-700/20 border border-red-600/50 rounded-2xl p-8 text-center mb-16">
-          <h3 className="text-3xl font-bold text-white mb-4">Lost Money to Cyber Fraud?</h3>
-          <p className="text-slate-300 mb-6 max-w-2xl mx-auto text-lg">
+        <div className="bg-[#fff4e5] border border-[#FF9933]/40 rounded-lg p-8 text-center mb-16">
+          <h3 className="text-3xl font-bold text-gray-800 mb-4">Lost Money to Cyber Fraud?</h3>
+          <p className="text-gray-600 mb-6 max-w-2xl mx-auto text-lg">
             File a complaint right now. The sooner you report, the higher the chances of recovery. Every minute counts.
           </p>
           <Link
             href="/chat"
-            className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition shadow-lg inline-block text-lg"
+            className="px-8 py-4 bg-[#0b3d91] hover:bg-[#0a3480] text-white font-semibold rounded transition shadow-lg inline-block text-lg"
           >
-            🚀 File Your Complaint Now
+            File Your Complaint Now
           </Link>
         </div>
 
         {/* FAQ Section */}
         <div className="mb-16">
-          <h3 className="text-3xl font-bold text-white mb-8 text-center">Common Questions</h3>
+          <h3 className="text-3xl font-bold text-gray-800 mb-8 text-center">Common Questions</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[
               {
@@ -239,7 +215,7 @@ export default function HomePage() {
               },
               {
                 q: 'How long does it take?',
-                a: 'Filing takes 3-5 minutes. Your complaint gets a Cyber Crime Number (CCN) instantly.',
+                a: 'Most complaints are filed in under 2 minutes. Your complaint gets a Cyber Crime Number (CCN) instantly.',
               },
               {
                 q: 'Can I track my complaint?',
@@ -250,9 +226,9 @@ export default function HomePage() {
                 a: 'Yes, all data is encrypted and handled by government cyber agencies only.',
               },
             ].map((faq, i) => (
-              <div key={i} className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-6">
-                <h4 className="text-white font-semibold mb-2">{faq.q}</h4>
-                <p className="text-slate-400 text-sm">{faq.a}</p>
+              <div key={i} className="bg-white border border-gray-200 shadow-sm rounded-lg p-6">
+                <h4 className="text-gray-800 font-semibold mb-2">{faq.q}</h4>
+                <p className="text-gray-600 text-sm">{faq.a}</p>
               </div>
             ))}
           </div>
@@ -262,43 +238,34 @@ export default function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
           <Link
             href="/chat"
-            className="bg-gradient-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 border border-red-600 rounded-xl p-6 text-center transition group"
+            className="bg-[#0b3d91] hover:bg-[#0a3480] rounded-lg p-6 text-center transition group"
           >
-            <div className="text-4xl mb-3">🚨</div>
             <h4 className="text-lg font-semibold text-white mb-2">File a Complaint</h4>
-            <p className="text-red-100 text-sm mb-4">Report cyber fraud instantly with AI assistance</p>
-            <span className="text-red-200 group-hover:text-red-100 text-sm font-semibold">Get Started →</span>
+            <p className="text-blue-100 text-sm mb-4">Report cyber fraud instantly — takes under 2 minutes</p>
+            <span className="text-white group-hover:underline text-sm font-semibold">Get Started &rarr;</span>
           </Link>
 
           <Link
             href="/awareness"
-            className="bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 border border-purple-600 rounded-xl p-6 text-center transition group"
+            className="bg-[#138808] hover:bg-[#0f6e06] rounded-lg p-6 text-center transition group"
           >
-            <div className="text-4xl mb-3">📚</div>
             <h4 className="text-lg font-semibold text-white mb-2">Learn & Protect</h4>
-            <p className="text-purple-100 text-sm mb-4">Understand cyber threats and prevention tips</p>
-            <span className="text-purple-200 group-hover:text-purple-100 text-sm font-semibold">Explore →</span>
+            <p className="text-green-100 text-sm mb-4">Understand cyber threats and prevention tips</p>
+            <span className="text-white group-hover:underline text-sm font-semibold">Explore &rarr;</span>
           </Link>
 
           <a
             href="tel:1930"
-            className="bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 border border-blue-600 rounded-xl p-6 text-center transition group"
+            className="bg-[#FF9933] hover:bg-[#e6862b] rounded-lg p-6 text-center transition group"
           >
-            <div className="text-4xl mb-3">📞</div>
             <h4 className="text-lg font-semibold text-white mb-2">Call Helpline</h4>
-            <p className="text-blue-100 text-sm mb-4">24/7 support. Free. In Hindi & English</p>
-            <span className="text-blue-200 group-hover:text-blue-100 text-sm font-semibold">Call 1930 →</span>
+            <p className="text-orange-50 text-sm mb-4">24/7 support. Free. In Hindi & English</p>
+            <span className="text-white group-hover:underline text-sm font-semibold">Call 1930 &rarr;</span>
           </a>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-slate-950 border-t border-slate-700/50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-slate-500 text-sm">
-          <p>&copy; 2026 National Cyber Crime Reporting Portal. All rights reserved.</p>
-          <p className="mt-2">Ministry of Interior | Government of India</p>
-        </div>
-      </footer>
+      <GovFooter />
     </div>
   )
 }

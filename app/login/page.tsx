@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import Image from 'next/image'
+import { TopStrip } from '@/app/components/GovHeader'
 
 export default function LoginPage() {
   const router = useRouter()
   const [loginMode, setLoginMode] = useState<'username' | 'mobile'>('username')
+  const [imgOk, setImgOk] = useState(true)
 
   // Username/Password mode
   const [username, setUsername] = useState('')
@@ -46,7 +48,6 @@ export default function LoginPage() {
         return
       }
 
-      // Success - redirect to dashboard
       setIsLoading(false)
       router.push('/dashboard')
     } catch (err) {
@@ -114,7 +115,6 @@ export default function LoginPage() {
         return
       }
 
-      // Success - redirect to dashboard
       setIsLoading(false)
       router.push('/dashboard')
     } catch (err) {
@@ -128,7 +128,6 @@ export default function LoginPage() {
     setPassword(account.password)
     setShowDemo(false)
 
-    // Auto-submit after a brief delay
     setTimeout(async () => {
       try {
         const res = await fetch('/api/auth/login', {
@@ -147,215 +146,236 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-red-600 to-red-700 rounded-2xl mb-4 shadow-lg">
-            <span className="text-3xl">🛡️</span>
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Cyber Crime Portal</h1>
-          <p className="text-slate-400">National Reporting & Response Platform</p>
-        </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <TopStrip />
+      <div className="w-full h-1.5 flex flex-shrink-0">
+        <div className="flex-1 bg-[#FF9933]" />
+        <div className="flex-1 bg-white" />
+        <div className="flex-1 bg-[#138808]" />
+      </div>
 
-        {/* Login Card */}
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-8 backdrop-blur-xl">
-          {/* Mode Switcher */}
-          <div className="flex gap-2 mb-6">
-            <button
-              onClick={() => {
-                setLoginMode('username')
-                setError('')
-                setOtp('')
-                setOtpSent(false)
-              }}
-              className={`flex-1 py-2 rounded-lg font-medium transition ${
-                loginMode === 'username'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              👤 Username
-            </button>
-            <button
-              onClick={() => {
-                setLoginMode('mobile')
-                setError('')
-                setUsername('')
-                setPassword('')
-              }}
-              className={`flex-1 py-2 rounded-lg font-medium transition ${
-                loginMode === 'mobile'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              📱 Mobile + OTP
-            </button>
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          {/* Header */}
+          <div className="text-center mb-8">
+            {imgOk ? (
+              <Image
+                src="/images/emblem-india.png"
+                alt="Emblem of India"
+                width={64}
+                height={64}
+                className="w-16 h-16 object-contain mx-auto mb-4"
+                onError={() => setImgOk(false)}
+              />
+            ) : (
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full border-2 border-[#0b3d91] mb-4">
+                <span className="text-2xl text-[#0b3d91] font-bold">GOI</span>
+              </div>
+            )}
+            <p className="text-[#0b3d91] font-bold text-lg">राष्ट्रीय साइबर अपराध रिपोर्टिंग पोर्टल</p>
+            <h1 className="text-2xl font-bold text-gray-800 mb-1">National Cyber Crime Reporting Portal</h1>
+            <p className="text-gray-500 text-sm">Ministry of Home Affairs, Government of India</p>
           </div>
 
-          {/* Username/Password Form */}
-          {loginMode === 'username' && (
-            <form onSubmit={handleLogin} className="space-y-4">
-              {error && (
-                <div className="bg-red-900/30 border border-red-700/50 rounded-lg p-3 text-sm text-red-200">
-                  {error}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Username / Email</label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter username"
-                  className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-600"
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
-                  className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-600"
-                  disabled={isLoading}
-                />
-              </div>
-
+          {/* Login Card */}
+          <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-8">
+            {/* Mode Switcher */}
+            <div className="flex gap-2 mb-6">
               <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50 text-white font-semibold py-2 rounded-lg transition"
+                onClick={() => {
+                  setLoginMode('username')
+                  setError('')
+                  setOtp('')
+                  setOtpSent(false)
+                }}
+                className={`flex-1 py-2 rounded font-medium transition ${
+                  loginMode === 'username'
+                    ? 'bg-[#0b3d91] text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
               >
-                {isLoading ? 'Logging in...' : 'Login'}
+                Username
               </button>
-            </form>
-          )}
+              <button
+                onClick={() => {
+                  setLoginMode('mobile')
+                  setError('')
+                  setUsername('')
+                  setPassword('')
+                }}
+                className={`flex-1 py-2 rounded font-medium transition ${
+                  loginMode === 'mobile'
+                    ? 'bg-[#0b3d91] text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Mobile + OTP
+              </button>
+            </div>
 
-          {/* Mobile/OTP Form */}
-          {loginMode === 'mobile' && (
-            <>
-              {!otpSent ? (
-                <form onSubmit={handleSendOTP} className="space-y-4">
-                  {error && (
-                    <div className="bg-red-900/30 border border-red-700/50 rounded-lg p-3 text-sm text-red-200">
-                      {error}
+            {/* Username/Password Form */}
+            {loginMode === 'username' && (
+              <form onSubmit={handleLogin} className="space-y-4">
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+                    {error}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Username / Email</label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter username"
+                    className="w-full bg-white border border-gray-300 rounded px-4 py-2 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0b3d91]"
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                    className="w-full bg-white border border-gray-300 rounded px-4 py-2 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0b3d91]"
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-[#0b3d91] hover:bg-[#0a3480] disabled:opacity-50 text-white font-semibold py-2 rounded transition"
+                >
+                  {isLoading ? 'Logging in...' : 'Login'}
+                </button>
+              </form>
+            )}
+
+            {/* Mobile/OTP Form */}
+            {loginMode === 'mobile' && (
+              <>
+                {!otpSent ? (
+                  <form onSubmit={handleSendOTP} className="space-y-4">
+                    {error && (
+                      <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+                        {error}
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
+                      <div className="flex gap-2">
+                        <span className="px-4 py-2 bg-gray-100 border border-gray-300 rounded text-gray-500 flex items-center">
+                          +91
+                        </span>
+                        <input
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          placeholder="Enter 10-digit number"
+                          maxLength={10}
+                          className="flex-1 bg-white border border-gray-300 rounded px-4 py-2 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0b3d91]"
+                          disabled={isLoading}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">OTP will be sent to this number</p>
                     </div>
-                  )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Mobile Number</label>
-                    <div className="flex gap-2">
-                      <span className="px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-slate-400 flex items-center">
-                        +91
-                      </span>
+                    <button
+                      type="submit"
+                      disabled={isLoading || phone.length !== 10}
+                      className="w-full bg-[#0b3d91] hover:bg-[#0a3480] disabled:opacity-50 text-white font-semibold py-2 rounded transition"
+                    >
+                      {isLoading ? 'Sending OTP...' : 'Send OTP'}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleVerifyOTP} className="space-y-4">
+                    {error && (
+                      <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+                        {error}
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Enter OTP</label>
+                      <p className="text-xs text-gray-500 mb-3">
+                        OTP sent to +91-{phone.slice(0, 5)}****
+                      </p>
                       <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                        placeholder="Enter 10-digit number"
-                        maxLength={10}
-                        className="flex-1 bg-slate-700/50 border border-slate-600/50 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-600"
+                        type="text"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="Enter 4-6 digit OTP"
+                        maxLength={6}
+                        className="w-full bg-white border border-gray-300 rounded px-4 py-2 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0b3d91] text-center font-mono text-lg tracking-widest"
                         disabled={isLoading}
                       />
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">OTP will be sent to this number</p>
-                  </div>
 
-                  <button
-                    type="submit"
-                    disabled={isLoading || phone.length !== 10}
-                    className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50 text-white font-semibold py-2 rounded-lg transition"
-                  >
-                    {isLoading ? 'Sending OTP...' : 'Send OTP'}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleVerifyOTP} className="space-y-4">
-                  {error && (
-                    <div className="bg-red-900/30 border border-red-700/50 rounded-lg p-3 text-sm text-red-200">
-                      {error}
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Enter OTP</label>
-                    <p className="text-xs text-slate-400 mb-3">
-                      OTP sent to +91-{phone.slice(0, 5)}****
-                    </p>
-                    <input
-                      type="text"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      placeholder="Enter 4-6 digit OTP"
-                      maxLength={6}
-                      className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-600 text-center font-mono text-lg tracking-widest"
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading || otp.length < 4}
-                    className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50 text-white font-semibold py-2 rounded-lg transition"
-                  >
-                    {isLoading ? 'Verifying...' : 'Verify OTP'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOtpSent(false)
-                      setOtp('')
-                      setError('')
-                    }}
-                    disabled={isLoading}
-                    className="w-full text-slate-300 hover:text-white text-sm font-medium transition"
-                  >
-                    ← Back to Phone Number
-                  </button>
-                </form>
-              )}
-            </>
-          )}
-
-          {/* Demo Section - Only for Username Mode */}
-          {loginMode === 'username' && (
-            <div className="mt-6 pt-6 border-t border-slate-700/50">
-              <button
-                onClick={() => setShowDemo(!showDemo)}
-                className="w-full text-slate-300 hover:text-white text-sm font-medium transition"
-              >
-                {showDemo ? '← Hide Demo Accounts' : '👤 Demo Accounts'}
-              </button>
-
-              {showDemo && (
-                <div className="mt-4 space-y-2">
-                  {demoAccounts.map((account, i) => (
                     <button
-                      key={i}
-                      onClick={() => handleDemoLogin(account)}
-                      className="w-full text-left p-3 bg-slate-700/30 hover:bg-slate-700/50 border border-slate-600/30 rounded-lg transition"
+                      type="submit"
+                      disabled={isLoading || otp.length < 4}
+                      className="w-full bg-[#0b3d91] hover:bg-[#0a3480] disabled:opacity-50 text-white font-semibold py-2 rounded transition"
                     >
-                      <div className="text-sm font-medium text-slate-200">{account.role}</div>
-                      <div className="text-xs text-slate-400">{account.name}</div>
-                      <div className="text-xs text-slate-500 mt-1">{account.username}</div>
+                      {isLoading ? 'Verifying...' : 'Verify OTP'}
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
 
-        {/* Footer */}
-        <div className="text-center mt-6 text-slate-400 text-sm">
-          <p>🆘 Emergency? Call <strong className="text-slate-300">1930</strong> (24/7 Helpline)</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOtpSent(false)
+                        setOtp('')
+                        setError('')
+                      }}
+                      disabled={isLoading}
+                      className="w-full text-gray-500 hover:text-gray-800 text-sm font-medium transition"
+                    >
+                      &larr; Back to Phone Number
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
+
+            {/* Demo Section - Only for Username Mode */}
+            {loginMode === 'username' && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => setShowDemo(!showDemo)}
+                  className="w-full text-gray-500 hover:text-gray-800 text-sm font-medium transition"
+                >
+                  {showDemo ? '← Hide Demo Accounts' : 'Demo Accounts'}
+                </button>
+
+                {showDemo && (
+                  <div className="mt-4 space-y-2">
+                    {demoAccounts.map((account, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleDemoLogin(account)}
+                        className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded transition"
+                      >
+                        <div className="text-sm font-medium text-gray-800">{account.role}</div>
+                        <div className="text-xs text-gray-500">{account.name}</div>
+                        <div className="text-xs text-gray-400 mt-1">{account.username}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="text-center mt-6 text-gray-500 text-sm">
+            <p>Emergency? Call <strong className="text-gray-700">1930</strong> (24/7 Helpline)</p>
+          </div>
         </div>
       </div>
     </div>

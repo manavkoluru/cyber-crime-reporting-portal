@@ -41,8 +41,8 @@ var __TURBOPACK__imported__module__$5b$next$5d2f$internal$2f$font$2f$google$2f$i
 ;
 ;
 const metadata = {
-    title: 'Cyber Crime Reporting Portal – AI-Powered Fraud Response',
-    description: 'National Cyber Crime Reporting Portal with AI-powered real-time fraud incident response. Report UPI scams, phishing, and banking fraud instantly.',
+    title: 'Cyber Crime Reporting Portal – File a Complaint in Under 2 Minutes',
+    description: 'National Cyber Crime Reporting Portal. File your fraud complaint in under 2 minutes, get instant guidance, and act fast in the critical first hour. Report UPI scams, phishing, and banking fraud. Available 24/7.',
     icons: {
         icon: '/favicon.ico'
     }
@@ -52,7 +52,7 @@ function RootLayout({ children }) {
         lang: "en",
         className: "h-full",
         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("body", {
-            className: `${__TURBOPACK__imported__module__$5b$next$5d2f$internal$2f$font$2f$google$2f$inter_5972bc34$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["default"].className} h-full bg-gray-950`,
+            className: `${__TURBOPACK__imported__module__$5b$next$5d2f$internal$2f$font$2f$google$2f$inter_5972bc34$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["default"].className} h-full bg-gray-50`,
             suppressHydrationWarning: true,
             children: children
         }, void 0, false, {

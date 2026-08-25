@@ -14,12 +14,21 @@ const MicOff = () => <span>🔇</span>
 const X = () => <span>✕</span>
 const FileText = () => <span>📄</span>
 
+interface ChecklistItem {
+  id: string
+  label: string
+  description: string
+  satisfied: boolean
+}
+
 interface MessageMetadata {
   agent?: string
   priority?: string
   ccn?: string
   goldenHour?: boolean
   route?: string
+  checklist?: ChecklistItem[]
+  showChecklist?: boolean
 }
 
 interface Message {
@@ -68,8 +77,45 @@ function formatContent(text: string) {
   )
 }
 
+function ChecklistCard({ items }: { items: ChecklistItem[] }) {
+  const remaining = items.filter((i) => !i.satisfied).length
+
+  return (
+    <div className="mt-2 bg-gray-900 border border-gray-700 rounded-xl p-3 not-italic">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-bold text-gray-200 uppercase tracking-wide">What you'll need</span>
+        <span className={`text-xs font-semibold ${remaining === 0 ? 'text-green-400' : 'text-orange-400'}`}>
+          {remaining === 0 ? 'All set ✓' : `${items.length - remaining}/${items.length} ready`}
+        </span>
+      </div>
+      <ul className="space-y-2">
+        {items.map((item) => (
+          <li key={item.id} className="flex items-start gap-2">
+            <span
+              className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded-full border flex items-center justify-center text-[10px] ${
+                item.satisfied
+                  ? 'bg-green-600 border-green-600 text-white'
+                  : 'border-gray-500 text-transparent'
+              }`}
+            >
+              ✓
+            </span>
+            <div>
+              <div className={`text-sm ${item.satisfied ? 'text-gray-400 line-through' : 'text-gray-100'}`}>
+                {item.label}
+              </div>
+              <div className="text-xs text-gray-500">{item.description}</div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user'
+  const displayContent = message.content.replace('[[CHECKLIST]]', '')
 
   return (
     <div className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -83,7 +129,10 @@ function MessageBubble({ message }: { message: Message }) {
           isUser ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-gray-800 text-gray-100 rounded-bl-sm'
         }`}
       >
-        {formatContent(message.content)}
+        {formatContent(displayContent)}
+        {message.metadata?.checklist && !isUser && (
+          <ChecklistCard items={message.metadata.checklist} />
+        )}
         {message.fileAttached && (
           <div className="flex items-center gap-2 mb-2 text-xs opacity-70 border-b border-white/10 pb-2">
             <FileText className="w-3 h-3" />
@@ -140,9 +189,9 @@ export default function ChatPage() {
     {
       id: uuidv4(),
       role: 'assistant',
-      content: `🛡️ **Namaste! I'm your AI assistant.**
+      content: `🛡️ **Namaste! I'm here to help you fight back — right now.**
 
-I am your AI-powered cyber fraud response assistant – here to help you fight back, right now.
+You can file your complaint in under 2 minutes. Let's get started.
 
 Here is what I can do:
 • 📸 Analyze your UPI/banking screenshot to extract transaction details automatically
@@ -472,8 +521,8 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
 
   if (isAuthenticated === null) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-950">
-        <div className="text-white">Loading...</div>
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-gray-600">Loading...</div>
       </div>
     )
   }
@@ -481,34 +530,34 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
   return (
     <div className="flex flex-col h-screen bg-gray-950">
       {/* Header */}
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between flex-shrink-0 z-10">
+      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between flex-shrink-0 z-10">
         <div className="flex items-center gap-3">
           <button
             onClick={handleBack}
-            className="p-2 hover:bg-gray-800 rounded-lg transition text-gray-400 hover:text-white"
+            className="p-2 hover:bg-gray-100 rounded-lg transition text-gray-500 hover:text-gray-800"
             title="Go back"
           >
             ← Back
           </button>
           <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition">
-            <div className="bg-red-600 p-2 rounded-xl">
+            <div className="bg-[#0b3d91] p-2 rounded-xl">
               <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-white font-bold text-base">Cyber Crime Portal</h1>
-              <p className="text-gray-500 text-xs">AI-Powered Fraud Response</p>
+              <h1 className="text-gray-800 font-bold text-base">National Cyber Crime Reporting Portal</h1>
+              <p className="text-gray-500 text-xs">Instant Fraud Response, 24/7</p>
             </div>
           </Link>
         </div>
         <div className="flex items-center gap-2">
-          <a href="tel:1930" className="flex items-center gap-2 bg-orange-900/40 hover:bg-orange-900/60 border border-orange-700/60 rounded-full px-3 py-1.5 transition-colors">
-            <span className="text-orange-400 text-xs font-semibold">📞 1930</span>
+          <a href="tel:1930" className="flex items-center gap-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-full px-3 py-1.5 transition-colors">
+            <span className="text-orange-700 text-xs font-semibold">📞 1930</span>
           </a>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 bg-red-900/40 hover:bg-red-900/60 border border-red-700/60 rounded-full px-3 py-1.5 transition-colors"
+            className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-full px-3 py-1.5 transition-colors"
           >
-            <span className="text-red-400 text-xs font-semibold">🚪 Logout</span>
+            <span className="text-gray-700 text-xs font-semibold">Logout</span>
           </button>
         </div>
       </header>
