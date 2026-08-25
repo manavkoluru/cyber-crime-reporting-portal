@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getAllComplaints } from '@/lib/store'
 import ProfileMenu from '@/app/components/ProfileMenu'
 import { GovHeader, GovFooter } from '@/app/components/GovHeader'
 
@@ -27,27 +26,29 @@ export default function TrackComplaint() {
   const [complaints, setComplaints] = useState<Complaint[]>([])
 
   useEffect(() => {
-    const checkSession = async () => {
+    const loadComplaints = async () => {
       try {
-        const res = await fetch('/api/auth/me', { method: 'GET', credentials: 'include' })
-        if (!res.ok) {
+        const meRes = await fetch('/api/auth/me', { method: 'GET', credentials: 'include' })
+        if (!meRes.ok) {
           router.push('/login')
           return
         }
 
-        const session = await res.json()
-        const phone = session.phone
+        const session = await meRes.json()
+        setVerifiedPhone(session.phone || '')
 
-        const all = getAllComplaints()
-        const userComplaints = all
-          .filter(c => c.complainantPhone === phone)
-          .map(c => ({
+        // Fetch this user's complaint history from the server (in-memory store
+        // lives server-side, so it must be read through the API, not imported).
+        const res = await fetch('/api/complaints', { method: 'GET', credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          const userComplaints = (data.complaints || []).map((c: Complaint) => ({
             ...c,
             timestamp: new Date(c.timestamp),
           })) as Complaint[]
+          setComplaints(userComplaints)
+        }
 
-        setComplaints(userComplaints)
-        setVerifiedPhone(phone)
         setIsAuthenticated(true)
       } catch (error) {
         console.error('Session check failed:', error)
@@ -55,7 +56,7 @@ export default function TrackComplaint() {
       }
     }
 
-    checkSession()
+    loadComplaints()
   }, [router])
 
   const getStatusColor = (status: string) => {

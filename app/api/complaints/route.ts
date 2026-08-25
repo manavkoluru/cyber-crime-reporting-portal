@@ -1,47 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession, getAllComplaints, getComplaintsByJurisdiction } from '@/lib/store'
+import {
+  getSession,
+  getAllComplaints,
+  getComplaintsByJurisdiction,
+  getComplaintsByPhone,
+} from '@/lib/store'
 
 export async function GET(req: NextRequest) {
   try {
+    // Complainants log in via OTP, which stores a JSON "session" cookie holding
+    // their verified phone. Complaints are keyed by that phone, so we return the
+    // caller's own history here.
+    const jsonSession = req.cookies.get('session')?.value
+    if (jsonSession) {
+      try {
+        const s = JSON.parse(jsonSession)
+        if (s?.phone) {
+          const complaints = getComplaintsByPhone(s.phone)
+          return NextResponse.json({
+            success: true,
+            complaints,
+            userRole: s.role || 'COMPLAINANT',
+          })
+        }
+      } catch {
+        // Fall through to staff session handling below
+      }
+    }
+
+    // Staff (police/admin) log in via username/password, which stores an
+    // "auth_session" id cookie backed by the in-memory session store.
     const sessionId = req.cookies.get('auth_session')?.value
-
-    if (!sessionId) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    if (sessionId) {
+      const session = getSession(sessionId)
+      if (session) {
+        let complaints: any[] = []
+        if (session.role === 'POLICE') {
+          complaints = getComplaintsByJurisdiction(session.jurisdiction || '')
+        } else if (session.role === 'ADMIN') {
+          complaints = getAllComplaints()
+        }
+        return NextResponse.json({
+          success: true,
+          complaints,
+          userRole: session.role,
+          userJurisdiction: session.jurisdiction,
+        })
+      }
     }
 
-    const session = getSession(sessionId)
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Session expired' },
-        { status: 401 }
-      )
-    }
-
-    let complaints: any[] = []
-
-    if (session.role === 'COMPLAINANT') {
-      // Complainants see only their own complaints (matched by phone in session)
-      // For now, return empty since we don't track phone in session
-      complaints = []
-    } else if (session.role === 'POLICE') {
-      // Police see complaints assigned to their jurisdiction
-      complaints = getComplaintsByJurisdiction(session.jurisdiction || '')
-    } else if (session.role === 'ADMIN') {
-      // Admins see all complaints (in production, filter by state/jurisdiction)
-      complaints = getAllComplaints()
-    } else {
-      complaints = []
-    }
-
-    return NextResponse.json({
-      success: true,
-      complaints,
-      userRole: session.role,
-      userJurisdiction: session.jurisdiction,
-    })
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   } catch (error) {
     console.error('[Complaints] GET error:', error)
     return NextResponse.json(
