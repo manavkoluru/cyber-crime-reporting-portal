@@ -3,6 +3,18 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
+import { Facebook, Instagram, Linkedin, Send, Twitter, Youtube } from 'lucide-react'
+
+// Official cyber-safety handles of "CyberDost" (Indian Cybercrime Coordination
+// Centre / I4C, Ministry of Home Affairs) as shown on cybercrime.gov.in.
+const SOCIAL_LINKS = [
+  { label: 'CyberDost on X (Twitter)', href: 'https://x.com/Cyberdost', Icon: Twitter },
+  { label: 'CyberDost on Facebook', href: 'https://facebook.com/CyberDostI4C', Icon: Facebook },
+  { label: 'CyberDost on Instagram', href: 'https://instagram.com/cyberdosti4c', Icon: Instagram },
+  { label: 'CyberDost on YouTube', href: 'https://youtube.com/@cyberdosti4c', Icon: Youtube },
+  { label: 'CyberDost on LinkedIn', href: 'https://linkedin.com/company/cyberdosti4c', Icon: Linkedin },
+  { label: 'CyberDost on Telegram', href: 'https://t.me/cyberdosti4c', Icon: Send },
+] as const
 
 function EmblemFallback() {
   return (
@@ -142,6 +154,29 @@ export function GovFooter() {
               <li>Ministry of Home Affairs</li>
               <li>Government of India</li>
             </ul>
+          </div>
+        </div>
+        <div className="border-t border-white/20 pt-6 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-center sm:text-left">
+            <h4 className="font-semibold text-white text-sm">Connect with CyberDost</h4>
+            <p className="text-blue-100 text-xs mt-1">
+              Official cyber-safety handles of I4C, Ministry of Home Affairs
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {SOCIAL_LINKS.map(({ label, href, Icon }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
+                title={label}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors"
+              >
+                <Icon size={18} strokeWidth={1.75} />
+              </a>
+            ))}
           </div>
         </div>
         <div className="border-t border-white/20 pt-6 text-center text-blue-100 text-xs">
