@@ -1,33 +1,32 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { formatTimeAgo } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { v4 as uuidv4 } from 'uuid'
 import Link from 'next/link'
 
 // Icon components
-const Shield = () => <span className="text-white">🛡️</span>
-const Upload = () => <span>📤</span>
-const Send = () => <span>📤</span>
-const Mic = () => <span>🎤</span>
-const MicOff = () => <span>🔇</span>
-const X = () => <span>✕</span>
-const FileText = () => <span>📄</span>
-
-interface ChecklistItem {
-  id: string
-  label: string
-  description: string
-}
+type IconProps = { className?: string }
+const Shield = ({ className }: IconProps) => <span className={className || 'text-white'}>🛡️</span>
+const Upload = ({ className }: IconProps) => <span className={className}>📤</span>
+const Send = ({ className }: IconProps) => <span className={className}>📤</span>
+const Mic = ({ className }: IconProps) => <span className={className}>🎤</span>
+const MicOff = ({ className }: IconProps) => <span className={className}>🔇</span>
+const X = ({ className }: IconProps) => <span className={className}>✕</span>
+const FileText = ({ className }: IconProps) => <span className={className}>📄</span>
 
 interface MessageMetadata {
   agent?: string
   priority?: string
   ccn?: string
+  trackComplaint?: boolean
   goldenHour?: boolean
   route?: string
-  checklist?: ChecklistItem[]
-  showChecklist?: boolean
+  extraction?: {
+    items: Array<{ label: string; value: string | null }>
+    remaining: string[]
+  }
 }
 
 interface Message {
@@ -76,54 +75,32 @@ function formatContent(text: string) {
   )
 }
 
-function ChecklistCard({ items }: { items: ChecklistItem[] }) {
-  const [checked, setChecked] = useState<Record<string, boolean>>({})
-  const readyCount = items.filter((i) => checked[i.id]).length
-  const remaining = items.length - readyCount
-
-  const toggle = (id: string) => {
-    setChecked((prev) => ({ ...prev, [id]: !prev[id] }))
-  }
-
+function ExtractionChecklist({ extraction }: { extraction: NonNullable<MessageMetadata['extraction']> }) {
   return (
-    <div className="mt-2 bg-gray-900 border border-gray-700 rounded-xl p-3 not-italic">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-bold text-gray-200 uppercase tracking-wide">What you'll need</span>
-        <span className={`text-xs font-semibold ${remaining === 0 ? 'text-green-400' : 'text-orange-400'}`}>
-          {remaining === 0 ? 'All set ✓' : `${readyCount}/${items.length} ready`}
-        </span>
-      </div>
-      <ul className="space-y-2">
-        {items.map((item) => (
-          <li key={item.id} className="flex items-start gap-2">
-            <button
-              type="button"
-              onClick={() => toggle(item.id)}
-              aria-pressed={!!checked[item.id]}
-              className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center text-[10px] cursor-pointer ${
-                checked[item.id]
-                  ? 'bg-green-600 border-green-600 text-white'
-                  : 'border-gray-500 text-transparent hover:border-gray-300'
-              }`}
-            >
-              ✓
-            </button>
-            <div className="cursor-pointer" onClick={() => toggle(item.id)}>
-              <div className={`text-sm ${checked[item.id] ? 'text-gray-400 line-through' : 'text-gray-100'}`}>
-                {item.label}
-              </div>
-              <div className="text-xs text-gray-500">{item.description}</div>
-            </div>
+    <section className="mt-3 rounded-xl border border-slate-600 bg-slate-900/80 p-3 not-italic" aria-label="Extracted transaction details">
+      <h3 className="text-xs font-bold uppercase tracking-wide text-slate-200">Transaction details found</h3>
+      <ul className="mt-2 space-y-2">
+        {extraction.items.map((item) => (
+          <li key={item.label} className="flex gap-2 text-sm">
+            <span aria-hidden="true" className={item.value ? 'text-emerald-400' : 'text-amber-400'}>{item.value ? '✓' : '•'}</span>
+            <span className="min-w-0">
+              <span className="text-slate-400">{item.label}: </span>
+              <span className={item.value ? 'font-medium text-white' : 'text-amber-200'}>{item.value || 'Still needed'}</span>
+            </span>
           </li>
         ))}
       </ul>
-    </div>
+      {extraction.remaining.length > 0 && (
+        <p className="mt-3 border-t border-slate-700 pt-2 text-xs text-amber-100">
+          Please provide: {extraction.remaining.join(', ')}.
+        </p>
+      )}
+    </section>
   )
 }
 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user'
-  const displayContent = message.content.replace(/\[\[CHECKLIST:[A-Z_]+\]\]/, '').replace('[[CHECKLIST]]', '')
 
   return (
     <div className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -137,10 +114,8 @@ function MessageBubble({ message }: { message: Message }) {
           isUser ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-gray-800 text-gray-100 rounded-bl-sm'
         }`}
       >
-        {formatContent(displayContent)}
-        {message.metadata?.checklist && !isUser && (
-          <ChecklistCard items={message.metadata.checklist} />
-        )}
+        {formatContent(message.content)}
+        {message.metadata?.extraction && !isUser && <ExtractionChecklist extraction={message.metadata.extraction} />}
         {message.fileAttached && (
           <div className="flex items-center gap-2 mb-2 text-xs opacity-70 border-b border-white/10 pb-2">
             <FileText className="w-3 h-3" />
@@ -163,6 +138,14 @@ function MessageBubble({ message }: { message: Message }) {
               <div className="text-xs text-green-300 font-mono">{message.metadata.ccn}</div>
             </div>
           </div>
+        )}
+        {message.metadata?.trackComplaint && !isUser && (
+          <Link
+            href="/track-complaint"
+            className="mt-3 inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+          >
+            🔍 Track complaint status
+          </Link>
         )}
       </div>
     </div>
@@ -208,11 +191,23 @@ Here is what I can do:
 • ☑️ Track your complaint status with a reference number
 • 🛒 Guide you for e-commerce or consumer disputes
 
-**What happened? Tell me in your own words, or upload a screenshot to get started.**`,
+**Upload a transaction screenshot or payment document and I will read it immediately.** If you prefer, type these details: transaction ID/UTR, amount lost, recipient UPI ID, mobile number or bank account, and payment method (UPI, IMPS, RTGS, NEFT, debit card, or credit card).`,
       timestamp: new Date(),
     },
   ])
   const [input, setInput] = useState('')
+
+  // Confirmation Modal
+  const [showConfirmation, setShowConfirmation] = useState(false)
+  const [pendingFileData, setPendingFileData] = useState<any>(null)
+
+  const handleConfirmation = (confirmed: boolean) => {
+    if (confirmed && pendingFileData) {
+      setMessages([...messages, { ...pendingFileData }])
+    }
+    setShowConfirmation(false)
+    setPendingFileData(null)
+  }
   const [isLoading, setIsLoading] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -286,9 +281,20 @@ Here is what I can do:
         credentials: 'include',
       })
 
-      if (!response.ok) throw new Error('API error')
-
       const data = await response.json()
+
+      if (!response.ok) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: uuidv4(),
+            role: 'assistant',
+            content: String(data.message || 'I could not analyze the upload. Please try again or call 1930 for urgent fraud.'),
+            timestamp: new Date(),
+          },
+        ])
+        return
+      }
 
       let messageContent = data.message
       if (typeof messageContent === 'string' && messageContent.startsWith('{')) {
@@ -746,6 +752,40 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ConfirmationModal({ isOpen, onConfirm, onCancel }: { isOpen: boolean; onConfirm: () => void; onCancel: () => void }) {
+  if (!isOpen) return null
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+        <div className="mb-4">
+          <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <span className="text-2xl">✅</span> Ready to File?
+          </h3>
+          <p className="text-gray-600 text-sm mt-2">
+            All required information has been collected. Should I proceed with filing your complaint?
+          </p>
+        </div>
+        
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2 bg-[#0b3d91] hover:bg-[#0a3480] text-white font-semibold rounded transition"
+          >
+            Yes, File
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

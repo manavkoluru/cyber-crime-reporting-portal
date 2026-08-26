@@ -3,6 +3,7 @@ import { IDARaw } from './ida'
 import { RouteDecision } from './router'
 import { addComplaint, getPincodeJurisdiction } from '@/lib/store'
 import { decideFreezeAction } from '@/lib/freezeDecision'
+import { formatTimeAgo } from '@/lib/utils'
 import { v4 as uuidv4 } from 'uuid'
 
 const FILE_COMPLAINT_SYSTEM_PROMPT = `You are the File Complaint Agent of the Cyber Crime Reporting Portal.
@@ -97,6 +98,7 @@ export async function runFileComplaint(
     ext.time_since_fraud_minutes !== null &&
     ext.user_phone &&
     userLocation &&
+    ext.fraud_narrative &&
     isUserAuthenticated // Can only file if authenticated or OTP verified
   )
 
@@ -123,6 +125,7 @@ export async function runFileComplaint(
   // Only ask for VPA_ACCOUNT if we don't have ANY destination info (VPA, phone, or name)
   if (!hasDestinationInfo) missingFields.push('VPA_ACCOUNT')
   if (!userLocation) missingFields.push('LOCATION')
+  if (!ext.fraud_narrative) missingFields.push('NARRATIVE')
   // Only ask for phone if not already provided AND not already asked in this conversation
   if (!ext.user_phone && !recentConversation.includes('phone number')) {
     missingFields.push('PHONE')
@@ -134,6 +137,7 @@ export async function runFileComplaint(
     VPA_ACCOUNT: 3,
     LOCATION: 4,
     PHONE: 5,
+    NARRATIVE: 6,
   }
   const nextMissingField = missingFields.length > 0
     ? missingFields.sort((a, b) => (fieldPriority[a as keyof typeof fieldPriority] || 99) - (fieldPriority[b as keyof typeof fieldPriority] || 99))[0]
@@ -143,8 +147,10 @@ export async function runFileComplaint(
     UTR_TRANSACTION_ID: 'Transaction ID / UTR',
     AMOUNT: 'Amount (in rupees)',
     VPA_ACCOUNT: 'Destination VPA or Account',
+    SENDER_BANK: 'Your bank (debited from - MANDATORY)',
     LOCATION: 'Location (pincode or city)',
     PHONE: 'Phone number (for verification)',
+    NARRATIVE: 'What happened (one or two short sentences)',
   }
 
   const missingFieldsList = missingFields.length === 0
@@ -154,6 +160,10 @@ export async function runFileComplaint(
   const nextTaskInstructions = missingFields.length === 0
     ? 'TASK: Show summary of complaint details. Ask for confirmation: "Should I file your complaint with these details?" Do NOT ask for additional fields.'
     : `TASK: Ask for the FIRST missing field ONLY: ${missingFieldLabels[nextMissingField as keyof typeof missingFieldLabels]}. Do NOT ask for multiple fields.`
+
+  const authenticatedNextStep = nextMissingField
+    ? `Your account is already verified. Please provide: ${missingFieldLabels[nextMissingField as keyof typeof missingFieldLabels]}.`
+    : 'Your account is already verified. Should I file your complaint with these details?'
 
   // Build destination display for context
   const destinationDisplay = ext.destination_vpa_or_account
@@ -171,6 +181,7 @@ ${destinationDisplay ? `✅ Destination/Recipient: ${destinationDisplay}` : `❌
 ${ext.payment_platform ? `✅ Platform: ${ext.payment_platform}` : `⚠️ Platform: Unknown`}
 ${ext.golden_hour_active ? `🔥 GOLDEN HOUR ACTIVE` : `⏳ Not urgent (>2 hours)`}
 ${userLocation ? `✅ Location: ${userLocation}` : `❌ Location: NOT PROVIDED`}
+${ext.fraud_narrative ? `✅ What happened: ${ext.fraud_narrative}` : `❌ What happened: NOT PROVIDED`}
 
 ## 🔴 STILL NEED (ASK FOR THESE)
 ${ext.user_phone ? `✅ Phone: ${ext.user_phone}` : `❌ Phone: MUST COLLECT`}
@@ -186,6 +197,7 @@ ${nextTaskInstructions}
 GOLDEN RULE: If field shows ✅ above, DO NOT ASK FOR IT. Only ask for fields marked ❌ or from "STILL NEED" section.
 IMPORTANT: If user provided phone number + name as recipient (number-to-number transfer), do NOT ask for VPA - that's complete destination info.
 ${!isUserAuthenticated ? `\nNOTE: User is not authenticated. After collecting phone number, guide them through OTP verification before filing.` : ''}
+${isUserAuthenticated ? '\nABSOLUTE RULE: This user is already authenticated. Never ask for an OTP, a verification code, or a 4-6 digit code.' : ''}
 `
 
   const recentHistory = history.slice(-6).map((m) => ({
@@ -255,9 +267,12 @@ Now I need a few more details to file your complaint:
     })
 
     const responseText = response.choices[0].message.content || 'Please try again.'
+    const asksForOtp = /\botp\b|verification code|4\s*[-–]\s*6\s*digit|enter.*code/i.test(responseText)
+    // Guard against an LLM re-asking for a credential that the session has already verified.
+    const safeResponseText = isUserAuthenticated && asksForOtp ? authenticatedNextStep : responseText
 
     // Prepend summary if image was processed
-    const finalResponse = summaryResponse ? summaryResponse + responseText : responseText
+    const finalResponse = summaryResponse ? summaryResponse + safeResponseText : safeResponseText
 
     // Check if user confirmed filing (look for affirmative responses)
     const userConfirmedFiling = /\b(yes|sure|go ahead|proceed|file|submit|confirm)\b/i.test(message)
@@ -272,41 +287,6 @@ Now I need a few more details to file your complaint:
       const complaintId = `complaint_${uuidv4()}`
 
       try {
-        // Build receiver info from available fields
-        const receiverInfo = ext.destination_vpa_or_account
-          ? ext.destination_vpa_or_account
-          : [ext.recipient_name, ext.recipient_phone].filter(Boolean).join(' | ') || 'Unknown'
-
-        addComplaint({
-          id: complaintId,
-          ccn: ccn!,
-          complainantPhone: ext.user_phone!,
-          complainantName: '',
-          complainantLocation: userLocation,
-          fraudNarrative: message,
-          amount: parseInt(String(ext.amount_stolen).replace(/,/g, '')) || 0,
-          receiver: receiverInfo,
-          utr: ext.utr_or_transaction_id!,
-          paymentPlatform: ext.payment_platform || 'Unknown',
-          timestamp: new Date(),
-          status: 'FILED',
-          confidenceScore: idaResult.confidence || 0.7,
-          assignedJurisdiction: jurisdiction,
-          frozenAccounts: [],
-          timeline: [
-            {
-              timestamp: new Date(),
-              action: 'Complaint Filed',
-              actor: 'SYSTEM',
-              details: `Auto-assigned to ${jurisdiction}`,
-            },
-          ],
-          escalatedToAdmin: false,
-        })
-
-        savedComplaintId = complaintId
-
-        // Decide on account freeze action
         const freezeDecision = decideFreezeAction({
           confidenceScore: idaResult.confidence || 0.7,
           amountInRupees: parseInt(String(ext.amount_stolen).replace(/,/g, '')) || 0,
@@ -314,6 +294,78 @@ Now I need a few more details to file your complaint:
           currentHour: new Date().getHours(),
           fraudCategory: ext.fraud_category || 'UNKNOWN',
         })
+        const workflowTimeline = [
+          {
+            timestamp: new Date(),
+            action: 'Complaint filed',
+            actor: 'COMPLAINANT',
+            details: 'Your report was submitted to the portal.',
+            state: 'COMPLETED' as const,
+          },
+          {
+            timestamp: new Date(),
+            action: 'Automated triage completed',
+            actor: 'SYSTEM',
+            details: freezeDecision.reason,
+            state: 'COMPLETED' as const,
+          },
+          {
+            timestamp: new Date(),
+            action: freezeDecision.action === 'MANUAL_REVIEW' ? 'Awaiting portal review' : `Assigned to ${jurisdiction} Police Station`,
+            actor: 'SYSTEM',
+            details: freezeDecision.action === 'MANUAL_REVIEW'
+              ? 'A reviewer will assess the available evidence and incident summary.'
+              : 'Awaiting an officer decision on the next action.',
+            state: 'CURRENT' as const,
+          },
+          {
+            timestamp: new Date(),
+            action: 'Receiver-bank action',
+            actor: 'EXTERNAL',
+            details: 'Pending a verified instruction and confirmation from the relevant bank. This portal has not confirmed a freeze.',
+            state: 'PENDING' as const,
+          },
+          {
+            timestamp: new Date(),
+            action: 'Recovery outcome',
+            actor: 'EXTERNAL',
+            details: 'Pending bank and investigation updates.',
+            state: 'PENDING' as const,
+          },
+        ]
+
+        // Build receiver info from available fields
+        const receiverInfo = ext.destination_vpa_or_account
+          ? ext.destination_vpa_or_account
+          : [ext.recipient_name, ext.recipient_phone].filter(Boolean).join(' | ') || 'Unknown'
+
+        const shouldAutoFreeze = ext.golden_hour_active && 
+          idaResult.confidence && idaResult.confidence >= 0.8 && 
+          ext.fraud_narrative && ext.fraud_narrative.length > 10
+
+        addComplaint({
+          id: complaintId,
+          ccn: ccn!,
+          complainantPhone: ext.user_phone!,
+          complainantName: '',
+          complainantLocation: userLocation,
+          fraudNarrative: ext.fraud_narrative || '',
+          amount: parseInt(String(ext.amount_stolen).replace(/,/g, '')) || 0,
+          receiver: receiverInfo,
+          utr: ext.utr_or_transaction_id!,
+          paymentPlatform: ext.payment_platform || 'Unknown',
+          timestamp: new Date(),
+          status: shouldAutoFreeze ? 'SENT_FOR_FREEZING' : 'FILED',
+          confidenceScore: idaResult.confidence || 0.7,
+          assignedJurisdiction: jurisdiction,
+          frozenAccounts: shouldAutoFreeze ? [receiverInfo] : [],
+          timeline: workflowTimeline,
+          escalatedToAdmin: false,
+          isGoldenHour: ext.golden_hour_active,
+          goldenHourAutoFrozen: shouldAutoFreeze ? true : undefined,
+        })
+
+        savedComplaintId = complaintId
 
         // Get today's date for complaint filing
         const today = new Date()
@@ -329,14 +381,16 @@ Now I need a few more details to file your complaint:
           ? ext.destination_vpa_or_account
           : [ext.recipient_name, ext.recipient_phone].filter(Boolean).join(' | ') || 'Unknown'
 
-        // Build detailed success response with CCN and track status link
+        const incidentTimeDisplay = formatTimeAgo(ext.time_since_fraud_minutes)
+
+        // Build detailed success response; the client renders the tracking CTA as a real button.
         fileSuccessResponse = `
 ✅ **Your complaint has been filed successfully!**
 
 🔐 **Cyber Crime Number (CCN):** \`${ccn}\`
 
 📋 **Complaint Summary:**
-• **Incident Date:** ${incidentDate}
+• **Incident Date:** ${incidentDate} (${incidentTimeDisplay})
 • **Complaint Filed:** ${complaintDate}
 • **Amount:** ₹${ext.amount_stolen}
 • **Destination:** ${filedRecipientDisplay}
@@ -344,8 +398,6 @@ Now I need a few more details to file your complaint:
 • **Platform:** ${ext.payment_platform || 'Unknown'}
 • **Location:** ${userLocation}
 • **Assigned to:** ${jurisdiction} Police Station
-
-🔍 **Track Your Complaint Status:** [Click here to view your complaint status](/dashboard?tab=track-complaints)
 
 **What happens next:**
 1. Your complaint will be reviewed by local cyber police
@@ -373,6 +425,7 @@ Now I need a few more details to file your complaint:
         ccn: isFilingComplaint ? ccn : undefined,
         goldenHour: ext.golden_hour_active,
         complaintId: isFilingComplaint ? savedComplaintId : undefined,
+        trackComplaint: isFilingComplaint,
         // OTP flow metadata
         requiresOTP: needsOTPVerification,
         otpPhone: needsOTPVerification ? ext.user_phone : undefined,
@@ -385,6 +438,7 @@ Now I need a few more details to file your complaint:
           destination_vpa_or_account: ext.destination_vpa_or_account,
           recipient_name: ext.recipient_name,
           recipient_phone: ext.recipient_phone,
+          fraud_narrative: ext.fraud_narrative,
           payment_platform: ext.payment_platform,
           time_since_fraud_minutes: ext.time_since_fraud_minutes,
           user_phone: ext.user_phone,

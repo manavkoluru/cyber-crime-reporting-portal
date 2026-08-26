@@ -6,13 +6,61 @@ import { runRouter } from '@/lib/agents/router'
 import { runFileComplaint } from '@/lib/agents/fileComplaint'
 import { runRetrieval } from '@/lib/agents/retrieval'
 import { runFallback } from '@/lib/agents/fallback'
-import { COMPLAINT_REQUIREMENTS } from '@/lib/complaintRequirements'
 
 export const maxDuration = 60 // Vercel function timeout (seconds)
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 })
+
+type ExtractedDetails = NonNullable<Awaited<ReturnType<typeof runIDA>>['extracted']>
+
+function buildExtractionChecklist(extracted?: ExtractedDetails) {
+  if (!extracted) return undefined
+
+  const recipient = [
+    extracted.destination_vpa_or_account,
+    extracted.recipient_name,
+    extracted.recipient_phone,
+  ].filter(Boolean).join(' · ')
+
+  const timeDisplay = extracted.time_since_fraud_minutes
+    ? `${extracted.time_display || formatTimeAgo(extracted.time_since_fraud_minutes)}`
+    : null
+
+  const items = [
+    { label: 'Transaction ID / UTR', value: extracted.utr_or_transaction_id || extracted.phonepe_transaction_id || null },
+    { label: 'Amount involved', value: extracted.amount_stolen ? `₹${extracted.amount_stolen}` : null },
+    { label: 'Recipient VPA, mobile, or account', value: recipient || null },
+    { label: 'Time since incident', value: timeDisplay || null },
+    { label: 'Sender bank (from/debited)', value: extracted.sender_bank || null },
+    { label: 'Receiver bank (to)', value: extracted.receiver_bank || null },
+    { label: 'Payment method', value: extracted.payment_platform || null },
+  ]
+  const hasExtractedValue = items.some((item) => item.value)
+
+  if (!hasExtractedValue) return undefined
+
+  return {
+    items,
+    remaining: items.filter((item) => !item.value).map((item) => item.label),
+  }
+}
+
+function formatTimeAgo(minutes: number | null | undefined): string {
+  if (!minutes || minutes < 0) return 'Unknown time'
+  if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`
+  const weeks = Math.floor(days / 7)
+  if (weeks < 4) return `${weeks} week${weeks > 1 ? 's' : ''} ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months} month${months > 1 ? 's' : ''} ago`
+  const years = Math.floor(days / 365)
+  return `${years} year${years > 1 ? 's' : ''} ago`
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,7 +106,8 @@ export async function POST(req: NextRequest) {
 
     // — Extract previously accumulated state from chat history
     let accumulatedExtracted: any = {}
-    for (const msg of history.slice().reverse()) {
+    // Accumulate from ALL previous assistant messages, not just the most recent
+    for (const msg of history) {
       if (msg.role === 'assistant') {
         // Try to extract previously identified fields from bot responses
         if (msg.content.includes('Transaction ID') || msg.content.includes('UTR') || msg.content.includes('₹')) {
@@ -121,40 +170,32 @@ export async function POST(req: NextRequest) {
         }
     }
 
-    // — Attach an upfront requirements checklist the first time a fraud type is identified
-    const fraudCategory = idaResult.extracted?.fraud_category
-    const intent = idaResult.extracted?.intent
-    const looksLikeAComplaint = intent === 'FILE_COMPLAINT' || intent === 'AMBIGUOUS'
-    const checklistAlreadyShown = history.some(
-      (msg: { role: string; content: string }) => msg.role === 'assistant' && msg.content.includes('[[CHECKLIST:')
-    )
-
-    let checklistMarker = ''
-    let checklistMetadata: Record<string, unknown> = {}
-    if (looksLikeAComplaint && fraudCategory && !checklistAlreadyShown) {
-      const items = COMPLAINT_REQUIREMENTS[fraudCategory] || COMPLAINT_REQUIREMENTS.UNKNOWN
-      checklistMetadata = { checklist: items }
-      checklistMarker = `[[CHECKLIST:${fraudCategory}]]`
-    }
-
     return NextResponse.json({
-      message: agentResponse.message + checklistMarker,
+      message: agentResponse.message,
       metadata: {
         ...agentResponse.metadata,
-        ...checklistMetadata,
+        extraction: buildExtractionChecklist(idaResult.extracted),
         goldenHour: idaResult.extracted?.golden_hour_active === true,
         route: route.route_to,
       },
     })
   } catch (error) {
     console.error('[CCRP] Chat API error:', error)
+    const upstreamStatus =
+      typeof error === 'object' && error !== null && 'status' in error && typeof error.status === 'number'
+        ? error.status
+        : null
+    const isConfigurationError = upstreamStatus === 401 || upstreamStatus === 403
+
     return NextResponse.json(
       {
         message:
-          'I apologize – I ran into a technical issue. Please try again, or call **1930** (National Cyber Helpline, available 24x7 and free).',
+          isConfigurationError
+            ? 'I could not analyze the uploaded file because the secure AI service is not configured correctly. No transaction values were extracted. Please try again after the service configuration is fixed, or call **1930** (National Cyber Helpline, available 24x7 and free) for urgent fraud.'
+            : 'I could not analyze the uploaded file due to a technical issue. No transaction values were extracted. Please try again, or call **1930** (National Cyber Helpline, available 24x7 and free) for urgent fraud.',
         metadata: {},
       },
-      { status: 500 }
+      { status: isConfigurationError ? 503 : 500 }
     )
   }
 }

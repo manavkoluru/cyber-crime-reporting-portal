@@ -19,6 +19,15 @@ export async function runRouter(idaResult: IDARaw): Promise<RouteDecision> {
     }
   }
 
+  if (extracted.attachment_relevant === false) {
+    return {
+      route_to: 'IDA',
+      priority: 'NORMAL',
+      reason: 'Uploaded attachment does not contain fraud or transaction evidence',
+      context_passed: extracted,
+    }
+  }
+
   const { intent, fraud_category, golden_hour_active, utr_or_transaction_id, amount_stolen, destination_vpa_or_account } = extracted
   const missingCount = (missing_critical_fields || []).length
 

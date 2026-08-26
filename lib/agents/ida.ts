@@ -44,6 +44,17 @@ When an image is provided - YOU MUST extract ALL fields visible:
 – Timestamp: Parse date/time from screenshot (e.g., "05:04 pm on 23 Aug 2026") and calculate minutes since fraud
 – Sender/Payer: Extract who sent the money (if visible)
 
+## Attachment relevance check (do this before extracting)
+Treat an attachment as relevant only when it is a transaction screenshot, payment receipt, bank statement, bank SMS, or other evidence directly connected to the reported fraud. An unrelated image (selfie, landscape, meme, product photo, or a document with no fraud/payment evidence) is not relevant.
+
+If an attachment is irrelevant:
+1. Set "attachment_relevant" to false.
+2. Do not invent or retain transaction details from it.
+3. Set intent to "AMBIGUOUS" and fraud_category to "UNKNOWN" unless the typed message independently supplies fraud details.
+4. Reply exactly in substance: "I couldn't find transaction or fraud details in that file, so I have not used it. Please upload a transaction screenshot, payment receipt, or bank statement, or type your transaction ID/UTR, amount lost, recipient UPI ID/mobile/account number, bank, and payment method (UPI, IMPS, RTGS, NEFT, debit card, or credit card)."
+
+If an attachment is relevant, set "attachment_relevant" to true and extract every visible payment/fraud detail. If no attachment is provided, set it to null.
+
 CRITICAL RULES FOR TIMESTAMP EXTRACTION:
 1. If screenshot shows date/time like "05:04 pm on 23 Aug 2026", parse it exactly
 2. Calculate time_since_fraud_minutes by comparing screenshot datetime to current time
@@ -54,6 +65,12 @@ CRITICAL RULES FOR RECIPIENT EXTRACTION:
 2. Extract recipient_phone if visible (e.g., "+916362139321")
 3. Extract destination_vpa_or_account if it's a VPA like "name@upi" or account number
 4. If ONLY a name+phone is visible (no VPA), that's still valid - use recipient_name and recipient_phone
+
+CRITICAL RULES FOR BANK EXTRACTION:
+1. Look for bank names like ICICI, HDFC, SBI, Axis, Yes Bank, KOTAK, RBL, IndusInd, Federal, Bandhan
+2. Check for "Bank:" prefix
+3. Look in transaction details or account info sections
+4. NEVER set bank_name to null if you've seen it before in conversation history - PRESERVE IT
 
 CRITICAL RULES FOR ALL EXTRACTION:
 1. If you can see the screenshot, EXTRACT ALL VISIBLE NUMBERS AND DATA
@@ -69,6 +86,9 @@ CRITICAL RULES FOR ALL EXTRACTION:
 – destination_vpa_or_account: Receiver VPA (e.g. scammer@upi) OR account number (optional if phone/name provided)
 – recipient_name: Name of the person/entity who received the money
 – recipient_phone: Phone number of the recipient (format: +91...)
+– sender_bank: Bank from which money was debited/sent (MANDATORY if found - ICICI, HDFC, SBI, Axis, Yes, KOTAK, RBL, etc.)
+– receiver_bank: Bank of recipient (optional - harder to identify from UPI/VPA transactions)
+– fraud_narrative: A concise, one- or two-sentence account of what happened, using only the user's words. Set null if the user has not explained it.
 – payment_platform: GPay | PhonePe | Paytm | NEFT | IMPS | RTGS | Net Banking | Other
 – time_since_fraud_minutes: Minutes since fraud occurred (CALCULATE from visible timestamp and current time)
 – time_display: Human-friendly format: "2 hours ago" | "1 day ago" | "3 weeks ago" (based on minutes)
@@ -101,11 +121,15 @@ IMPORTANT: Return ONLY valid JSON object. Do not add any text before or after JS
     "destination_vpa_or_account": null,
     "recipient_name": null,
     "recipient_phone": null,
+    "sender_bank": null,
+    "receiver_bank": null,
+    "fraud_narrative": null,
     "payment_platform": null,
     "time_since_fraud_minutes": null,
     "user_phone": null,
     "user_location": null,
-    "golden_hour_active": false
+    "golden_hour_active": false,
+    "attachment_relevant": null
   },
   "confidence": 0.85,
   "missing_critical_fields": ["utr_or_transaction_id", "amount_stolen"]
@@ -123,11 +147,16 @@ export interface IDARaw {
     destination_vpa_or_account?: string | null
     recipient_name?: string | null
     recipient_phone?: string | null
+    sender_bank?: string | null
+    receiver_bank?: string | null
+    fraud_narrative?: string | null
     payment_platform?: string | null
     time_since_fraud_minutes?: number | null
     user_phone?: string | null
     user_location?: string | null
     golden_hour_active?: boolean
+    attachment_relevant?: boolean | null
+    time_display?: string | null
   }
   confidence?: number
   missing_critical_fields?: string[]
@@ -242,16 +271,8 @@ If user provides NEW information, extract and update. Otherwise, PRESERVE previo
 
     return parsed
   } catch (err) {
-    console.error('[IDA] Parse error:', err)
-    return {
-      conversationalReply: "I'm here to help you. Could you tell me – what happened and how much was lost?",
-      extracted: {
-        intent: 'AMBIGUOUS',
-        fraud_category: 'UNKNOWN',
-        golden_hour_active: false,
-      },
-      confidence: 0.1,
-      missing_critical_fields: ['intent', 'fraud_category'],
-    }
+    console.error('[IDA] Analysis failed:', err)
+    // Do not turn an upstream failure into a made-up assessment of the attachment.
+    throw err
   }
 }

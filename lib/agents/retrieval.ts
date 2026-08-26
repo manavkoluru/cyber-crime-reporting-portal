@@ -4,9 +4,11 @@ import { getComplaintsByPhone, ComplaintData } from '@/lib/store'
 
 const STATUS_LABELS: Record<ComplaintData['status'], string> = {
   FILED: '📋 Filed',
+  REVIEWED: '✔️ Reviewed',
   PENDING_CLARIFICATION: '⏳ Pending Clarification',
   UNDER_INVESTIGATION: '🔍 Under Investigation',
   ACCOUNT_FROZEN: '💰 Funds Frozen',
+  SENT_FOR_FREEZING: '🔒 Sent for Freezing',
   RESOLVED: '✅ Resolved',
 }
 

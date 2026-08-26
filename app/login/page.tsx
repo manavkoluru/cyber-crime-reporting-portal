@@ -7,7 +7,7 @@ import { TopStrip } from '@/app/components/GovHeader'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [loginMode, setLoginMode] = useState<'username' | 'mobile'>('username')
+  const [loginMode, setLoginMode] = useState<'username' | 'mobile'>('mobile')
   const [imgOk, setImgOk] = useState(true)
 
   // Username/Password mode
@@ -25,8 +25,10 @@ export default function LoginPage() {
 
   const demoAccounts = [
     { username: 'victim@example.com', password: 'password123', role: 'Complainant', name: 'Priya Sharma' },
-    { username: 'police@bangalore.gov', password: 'police123', role: 'Cyber Police', name: 'Inspector Rajesh (Bangalore East)' },
-    { username: 'admin@bangalore.gov', password: 'admin123', role: 'City Admin', name: 'Cyber Crime Head - Bangalore' },
+    { username: 'police@bangalore.gov', password: 'Police@123', role: 'Cyber Police', name: 'Inspector Rajesh (Bangalore East)' },
+    { username: 'police_west@bangalore.gov', password: 'Police@123', role: 'Cyber Police', name: 'Inspector Anjali (Bangalore West)' },
+    { username: 'admin@bangalore.gov', password: 'Admin@2026', role: 'City Admin', name: 'Cyber Crime Head - Bangalore' },
+    { username: 'admin@karnataka.gov', password: 'Admin@2026', role: 'State Cyber Admin', name: 'State Cyber Admin - Karnataka' },
   ]
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -183,21 +185,6 @@ export default function LoginPage() {
             <div className="flex gap-2 mb-6">
               <button
                 onClick={() => {
-                  setLoginMode('username')
-                  setError('')
-                  setOtp('')
-                  setOtpSent(false)
-                }}
-                className={`flex-1 py-2 rounded font-medium transition ${
-                  loginMode === 'username'
-                    ? 'bg-[#0b3d91] text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Username
-              </button>
-              <button
-                onClick={() => {
                   setLoginMode('mobile')
                   setError('')
                   setUsername('')
@@ -210,6 +197,21 @@ export default function LoginPage() {
                 }`}
               >
                 Mobile + OTP
+              </button>
+              <button
+                onClick={() => {
+                  setLoginMode('username')
+                  setError('')
+                  setOtp('')
+                  setOtpSent(false)
+                }}
+                className={`flex-1 py-2 rounded font-medium transition ${
+                  loginMode === 'username'
+                    ? 'bg-[#0b3d91] text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Staff / Demo Login
               </button>
             </div>
 

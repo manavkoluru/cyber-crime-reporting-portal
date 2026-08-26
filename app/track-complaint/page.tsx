@@ -16,6 +16,19 @@ interface Complaint {
   timestamp: Date
   status: string
   paymentPlatform: string
+  timeline: Array<{
+    timestamp: Date
+    action: string
+    actor: string
+    details?: string
+    state?: 'COMPLETED' | 'CURRENT' | 'PENDING'
+  }>
+  policeNotes?: Array<{
+    timestamp: Date
+    officer: string
+    note: string
+    isPublic: boolean
+  }>
 }
 
 export default function TrackComplaint() {
@@ -45,6 +58,7 @@ export default function TrackComplaint() {
           const userComplaints = (data.complaints || []).map((c: Complaint) => ({
             ...c,
             timestamp: new Date(c.timestamp),
+            timeline: (c.timeline || []).map((event) => ({ ...event, timestamp: new Date(event.timestamp) })),
           })) as Complaint[]
           setComplaints(userComplaints)
         }
@@ -72,6 +86,25 @@ export default function TrackComplaint() {
       default:
         return 'bg-gray-100 text-gray-700 border-gray-200'
     }
+  }
+
+  const getTimelineStyle = (state: 'COMPLETED' | 'CURRENT' | 'PENDING' = 'PENDING') => {
+    if (state === 'COMPLETED') return 'bg-[#138808] text-[#138808]'
+    if (state === 'CURRENT') return 'bg-[#0b3d91] text-[#0b3d91]'
+    return 'bg-gray-300 text-gray-400'
+  }
+
+  const getWorkflowTimeline = (complaint: Complaint) => {
+    if (complaint.timeline.length > 1) return complaint.timeline
+
+    return [
+      ...(complaint.timeline.length > 0
+        ? complaint.timeline
+        : [{ timestamp: complaint.timestamp, action: 'Complaint filed', actor: 'COMPLAINANT', details: 'Your report was submitted to the portal.', state: 'COMPLETED' as const }]),
+      { timestamp: complaint.timestamp, action: 'Portal review queue', actor: 'SYSTEM', details: 'A reviewer will assess the available evidence and incident summary.', state: 'CURRENT' as const },
+      { timestamp: complaint.timestamp, action: 'Receiver-bank action', actor: 'EXTERNAL', details: 'Pending a verified instruction and confirmation from the relevant bank.', state: 'PENDING' as const },
+      { timestamp: complaint.timestamp, action: 'Recovery outcome', actor: 'EXTERNAL', details: 'Pending bank and investigation updates.', state: 'PENDING' as const },
+    ]
   }
 
   if (isAuthenticated === null) {
@@ -218,23 +251,50 @@ export default function TrackComplaint() {
                 </div>
 
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <p className="text-gray-400 text-xs mb-3">Timeline</p>
-                  <div className="space-y-2">
-                    <div className="flex items-start gap-3">
-                      <div className="w-2 h-2 bg-[#138808] rounded-full mt-2 flex-shrink-0" />
-                      <div>
-                        <p className="text-gray-800 font-semibold">Complaint Filed</p>
-                        <p className="text-gray-500 text-sm">{new Date(selectedComplaint.timestamp).toLocaleDateString('en-IN', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}</p>
-                      </div>
+                  <p className="text-gray-500 text-sm mb-1">Case progress</p>
+                  <p className="text-gray-400 text-xs mb-4">Portal workflow updates. Bank and police actions remain pending until externally confirmed.</p>
+                  <ol className="space-y-4">
+                    {getWorkflowTimeline(selectedComplaint).map((event, index, timeline) => {
+                      const state = event.state || (index === 0 ? 'COMPLETED' : 'PENDING')
+                      return (
+                        <li key={`${event.action}-${index}`} className="flex gap-3">
+                          <div className="flex flex-col items-center">
+                            <span className={`mt-1 h-3 w-3 rounded-full ${getTimelineStyle(state)}`} />
+                            {index < timeline.length - 1 && <span className="mt-1 h-full w-px bg-gray-200" />}
+                          </div>
+                          <div className="pb-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-semibold text-gray-800">{event.action}</p>
+                              <span className={`text-xs font-semibold ${getTimelineStyle(state).split(' ')[1]}`}>{state === 'CURRENT' ? 'IN PROGRESS' : state}</span>
+                            </div>
+                            {event.details && <p className="mt-1 text-sm text-gray-600">{event.details}</p>}
+                            {state !== 'PENDING' && <p className="mt-1 text-xs text-gray-400">{new Date(event.timestamp).toLocaleString('en-IN')}</p>}
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ol>
+                </div>
+
+                {/* Police Comments Section */}
+                {selectedComplaint.policeNotes && selectedComplaint.policeNotes.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-blue-900 mb-3">💬 Police Updates</p>
+                    <div className="space-y-3 max-h-48 overflow-y-auto">
+                      {selectedComplaint.policeNotes
+                        .filter((note) => note.isPublic)
+                        .map((note, i) => (
+                          <div key={i} className="bg-white rounded p-3 border-l-4 border-blue-500">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-semibold text-gray-800 text-sm">{note.officer}</span>
+                              <span className="text-xs text-gray-500">{new Date(note.timestamp).toLocaleString('en-IN')}</span>
+                            </div>
+                            <p className="text-sm text-gray-700">{note.note}</p>
+                          </div>
+                        ))}
                     </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex gap-3 pt-4">
                   <button
