@@ -424,16 +424,16 @@ Here is what I can do:
           role: 'assistant',
           content: `✅ **Verification successful!**
 
-Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashboard...`,
+Your phone number (+91${verifiedPhone}) has been verified. Redirecting to home...`,
           timestamp: new Date(),
         },
       ])
 
       setOtpPhone('')
 
-      // Redirect to dashboard after a short delay
+      // Redirect to home after a short delay
       setTimeout(() => {
-        window.location.href = '/dashboard'
+        window.location.href = '/'
       }, 1500)
     } catch (err) {
       console.error('[OTP Verify] Error:', err)
@@ -497,7 +497,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
     if (window.history.length > 1) {
       window.history.back()
     } else {
-      window.location.href = '/dashboard'
+      window.location.href = '/'
     }
   }
 
@@ -562,7 +562,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to dashbo
           >
             ← Back
           </button>
-          <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition">
             <div className="bg-[#0b3d91] p-2 rounded-xl">
               <Shield className="w-5 h-5 text-white" />
             </div>

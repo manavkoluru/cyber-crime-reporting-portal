@@ -51,7 +51,7 @@ export default function LoginPage() {
       }
 
       setIsLoading(false)
-      router.push('/dashboard')
+      router.push('/')
     } catch (err) {
       setError('Network error. Please try again.')
       setIsLoading(false)
@@ -118,7 +118,7 @@ export default function LoginPage() {
       }
 
       setIsLoading(false)
-      router.push('/dashboard')
+      router.push('/')
     } catch (err) {
       setError('Network error. Please try again.')
       setIsLoading(false)
@@ -139,7 +139,7 @@ export default function LoginPage() {
         })
 
         if (res.ok) {
-          router.push('/dashboard')
+          router.push('/')
         }
       } catch (err) {
         setError('Login failed')
