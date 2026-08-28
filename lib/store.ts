@@ -1,11 +1,13 @@
-// Local JSON-backed demo store. Production should use an access-controlled database.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
-import path from 'path'
+// In-memory demo store for complaints/users/sessions. Complaints are persisted via
+// lib/complaintPersistence.ts (JSON file locally, Upstash Redis on Vercel/prod).
+import { loadAllComplaints, saveAllComplaints } from './complaintPersistence'
 
 export interface ComplaintData {
   id: string
   ccn: string
   complainantPhone: string
+  /** The logged-in complainant's user id, when known. Primary key for "my complaints". */
+  complainantUserId?: string
   complainantName?: string
   complainantLocation: string // pincode or address
   fraudNarrative: string // what happened
@@ -62,24 +64,26 @@ const store = {
   users: new Map<string, User>(),
   sessions: new Map<string, SessionData>(),
 }
-const complaintsFile = path.join(process.cwd(), 'data', 'complaints.json')
-
+/** Write-through: persist the full complaint list. Fire-and-forget. */
 function persistComplaints() {
-  mkdirSync(path.dirname(complaintsFile), { recursive: true })
-  writeFileSync(complaintsFile, JSON.stringify(Array.from(store.complaints.values()), null, 2), 'utf8')
+  void saveAllComplaints(Array.from(store.complaints.values()))
 }
 
-function loadPersistedComplaints() {
-  if (!existsSync(complaintsFile)) return
+/**
+ * Load persisted complaints into the in-memory Map. Runs once on boot.
+ * `storeReady` resolves when done; API routes await it before serving.
+ */
+let _resolveReady!: () => void
+export const storeReady: Promise<void> = new Promise((r) => (_resolveReady = r))
+
+async function loadPersistedComplaints() {
   try {
-    const saved = JSON.parse(readFileSync(complaintsFile, 'utf8')) as ComplaintData[]
-    saved.forEach((complaint) => {
-      complaint.timestamp = new Date(complaint.timestamp)
-      complaint.timeline = (complaint.timeline || []).map((event) => ({ ...event, timestamp: new Date(event.timestamp) }))
-      store.complaints.set(complaint.id, complaint)
-    })
+    const saved = await loadAllComplaints()
+    saved.forEach((complaint) => store.complaints.set(complaint.id, complaint))
   } catch (error) {
-    console.error('[Store] Could not load local complaint history:', error)
+    console.error('[Store] Could not load complaint history:', error)
+  } finally {
+    _resolveReady()
   }
 }
 
@@ -88,7 +92,7 @@ const demoUsers: User[] = [
   {
     id: 'user_complainant_1',
     username: 'victim@example.com',
-    password: 'password123',
+    password: 'Rakshak-Demo-7fK92m',
     role: 'COMPLAINANT',
     phone: '9876543210',
     name: 'Priya Sharma',
@@ -96,7 +100,7 @@ const demoUsers: User[] = [
   {
     id: 'user_police_1',
     username: 'police@bangalore.gov',
-    password: 'Police@123',
+    password: 'Rakshak-Police-3pR58w',
     role: 'POLICE',
     jurisdiction: 'Bangalore East',
     phone: '9876543200',
@@ -105,7 +109,7 @@ const demoUsers: User[] = [
   {
     id: 'user_police_2',
     username: 'police_west@bangalore.gov',
-    password: 'Police@123',
+    password: 'Rakshak-Police-3pR58w',
     role: 'POLICE',
     jurisdiction: 'Bangalore West',
     phone: '9876543201',
@@ -114,7 +118,7 @@ const demoUsers: User[] = [
   {
     id: 'user_admin_bangalore',
     username: 'admin@bangalore.gov',
-    password: 'Admin@2026',
+    password: 'Rakshak-Admin-9xQ41v',
     role: 'ADMIN',
     jurisdiction: 'Bangalore', // city-level
     phone: '9876543202',
@@ -123,7 +127,7 @@ const demoUsers: User[] = [
   {
     id: 'user_admin_karnataka',
     username: 'admin@karnataka.gov',
-    password: 'Admin@2026',
+    password: 'Rakshak-Admin-9xQ41v',
     role: 'ADMIN',
     jurisdiction: 'Karnataka', // state-level
     phone: '9876543203',
@@ -135,7 +139,7 @@ const demoUsers: User[] = [
 demoUsers.forEach((user) => {
   store.users.set(user.id, user)
 })
-loadPersistedComplaints()
+void loadPersistedComplaints()
 
 export function getStore() {
   return store
@@ -155,6 +159,22 @@ export function getComplaint(id: string): ComplaintData | undefined {
 export function getComplaintsByPhone(phone: string): ComplaintData[] {
   return Array.from(store.complaints.values()).filter(
     (c) => c.complainantPhone === phone
+  )
+}
+
+/**
+ * A complainant's own complaints, matched by user id first (reliable) and by any
+ * phone in `phones` second (covers OTP login + the phone typed during the chat).
+ */
+export function getComplaintsForComplainant(
+  userId: string | undefined,
+  phones: (string | undefined | null)[] = []
+): ComplaintData[] {
+  const phoneSet = new Set(phones.filter(Boolean) as string[])
+  return Array.from(store.complaints.values()).filter(
+    (c) =>
+      (userId && c.complainantUserId === userId) ||
+      phoneSet.has(c.complainantPhone)
   )
 }
 
@@ -234,28 +254,11 @@ export function getPincodeJurisdiction(pincode: string): string {
   return map[pincode] || 'Bangalore East' // default fallback
 }
 
-// Mobile complaint mapping functions
-const mobileComplaintsFile = path.join(process.cwd(), 'data', 'mobile_complaints.json')
-
+// Mobile complaint mapping. The phone->complaint index is derived on the fly from the
+// complaints Map, so there is nothing separate to persist. Kept as a no-op so existing
+// call sites (addComplaint) don't need touching.
 function persistMobileComplaints() {
-  try {
-    const mapping: Record<string, string[]> = {}
-    for (const [phone, complaints] of store.complaints.entries()) {
-      if (complaints.complainantPhone) {
-        if (!mapping[complaints.complainantPhone]) {
-          mapping[complaints.complainantPhone] = []
-        }
-        if (!mapping[complaints.complainantPhone].includes(complaints.id)) {
-          mapping[complaints.complainantPhone].push(complaints.id)
-        }
-      }
-    }
-    
-    mkdirSync(path.dirname(mobileComplaintsFile), { recursive: true })
-    writeFileSync(mobileComplaintsFile, JSON.stringify({ mobile_to_complaints: mapping, version: '1.0', lastUpdated: new Date().toISOString() }, null, 2), 'utf8')
-  } catch (error) {
-    console.error('[Store] Failed to persist mobile complaints mapping:', error)
-  }
+  /* no-op: index is derived, see getMobileComplaintMapping */
 }
 
 function getMobileComplaintMapping(phone: string): string[] {

@@ -1,0 +1,169 @@
+{
+  "_comment": "Field requirements the downstream filing module must collect, per Online Financial Fraud sub-category. Mandatory/common set mirrors what the National Cyber Crime Reporting Portal (cybercrime.gov.in) actually requires for a financial-fraud report. Per RBL Bank's portal guide (report-cybercrime-india-national-portal) and the portal's own intake: only incident date/time, a 200+ char description, complainant ID proof, the bank/wallet/merchant name, the 12-digit transaction ID/UTR, the transaction date, and the fraud amount are mandatory. ALL suspect/fraudster details are optional. Set verifiedAgainstPortalOn once re-checked directly on the live form.",
+  "verifiedAgainstPortalOn": null,
+  "source": "https://www.rbl.bank.in/blog/banking/safe-banking/report-cybercrime-india-national-portal",
+
+  "common": {
+    "mandatory_fields": [
+      { "key": "incident_date_time", "label": "Date and time the fraud happened" },
+      { "key": "incident_description", "label": "A description of what happened, in your own words (at least 200 characters)" },
+      { "key": "complainant_id_proof", "label": "A photo/scan of your ID (Aadhaar, PAN, Voter ID, Driving Licence, or Passport) — JPG/PNG, up to 5 MB" },
+      { "key": "institution_name", "label": "Name of the bank, wallet, or merchant involved" },
+      { "key": "transaction_id_or_utr", "label": "Transaction ID / UTR number (12 digits)" },
+      { "key": "transaction_date", "label": "Date of the fraudulent transaction" },
+      { "key": "fraud_amount", "label": "Amount lost (INR)" }
+    ],
+    "optional_fields": [
+      { "key": "supporting_evidence", "label": "Screenshots, statements, or other proof (up to 10 MB each)" },
+      { "key": "suspect_mobile", "label": "Suspect's mobile number" },
+      { "key": "suspect_email", "label": "Suspect's email ID" },
+      { "key": "suspect_bank_account", "label": "Suspect's bank account number" },
+      { "key": "suspect_address", "label": "Suspect's address" },
+      { "key": "suspect_photo", "label": "Photo of the suspect — JPG/PNG, up to 5 MB" },
+      { "key": "suspect_website_or_handle", "label": "Suspicious website URL or social-media handle involved" },
+      { "key": "complainant_mobile", "label": "Your mobile number" },
+      { "key": "complainant_email", "label": "Your email address" },
+      { "key": "incident_state_ut", "label": "State/UT where the incident occurred" },
+      { "key": "incident_district", "label": "District where the incident occurred" },
+      { "key": "reported_to_bank_already", "label": "Have you already reported this to your bank? (yes/no)" },
+      { "key": "reported_to_1930", "label": "Did you call the 1930 helpline? (yes/no)" }
+    ]
+  },
+
+  "subCategories": {
+    "upi_fraud": {
+      "subCategory": "upi_fraud",
+      "label": "UPI fraud",
+      "topLevelCategory": "Online Financial Fraud",
+      "institution_field_hint": "The bank whose account was debited (the UPI app is only a channel).",
+      "_flow_note": "mandatory_fields below reflect exactly what the fileComplaint chat agent collects and hard-blocks filing on for UPI (lib/agents/fileComplaint.ts). The `common` block is the portal's full intake superset; the agent collects a subset and derives the rest (e.g. transaction_date from time-since-fraud, incident_description from the narrative).",
+      "mandatory_fields": [
+        { "key": "transaction_id_or_utr", "label": "Transaction ID / UTR" },
+        { "key": "fraud_amount", "label": "Amount lost (INR)" },
+        { "key": "fraudster_upi_id_or_vpa", "label": "Recipient's UPI ID / VPA (or the recipient's name / phone number)" },
+        { "key": "incident_date_time", "label": "When the fraud happened (time since the transaction)" },
+        { "key": "user_phone", "label": "Your phone number" },
+        { "key": "user_location", "label": "Your PIN code or city (for jurisdiction routing)" },
+        { "key": "incident_description", "label": "What happened, in your own words (one or two sentences)" }
+      ],
+      "optional_fields": [
+        { "key": "payment_app_used", "label": "UPI app used (GPay, PhonePe, Paytm, BHIM, bank app)" },
+        { "key": "sender_bank", "label": "Bank the money was debited from" },
+        { "key": "receiver_bank", "label": "Bank the money was credited to" },
+        { "key": "victim_registered_mobile", "label": "Mobile number registered with the debited bank account" },
+        { "key": "bank_debit_sms", "label": "Bank debit SMS/alert text" },
+        { "key": "transaction_screenshots", "label": "Screenshots from the UPI app showing the transaction" }
+      ],
+      "evidence_notes": "Most useful: the bank SMS or statement line showing the debit, plus the UPI app transaction history screenshot showing the 12-digit UTR/RRN and the payee VPA."
+    },
+
+    "card_fraud": {
+      "subCategory": "card_fraud",
+      "label": "Debit/credit card fraud",
+      "topLevelCategory": "Online Financial Fraud",
+      "institution_field_hint": "The bank that issued the card.",
+      "mandatory_fields": [],
+      "optional_fields": [
+        { "key": "card_type", "label": "Card type (debit or credit)" },
+        { "key": "card_last4", "label": "Last 4 digits of the card" },
+        { "key": "merchant_name_or_descriptor", "label": "Merchant name / statement descriptor for the charge" },
+        { "key": "domestic_or_international", "label": "Was the charge domestic or international?" },
+        { "key": "otp_or_cvv_shared", "label": "Did you share an OTP/CVV/PIN? (yes/no)" },
+        { "key": "card_block_reference_no", "label": "Reference number for blocking the card" },
+        { "key": "statement_screenshot", "label": "Screenshot/PDF of the card statement line" }
+      ],
+      "evidence_notes": "Most useful: the card statement line for the disputed charge, the transaction SMS, and any dispute/chargeback reference already raised with the bank."
+    },
+
+    "internet_banking_fraud": {
+      "subCategory": "internet_banking_fraud",
+      "label": "Internet banking fraud",
+      "topLevelCategory": "Online Financial Fraud",
+      "institution_field_hint": "Your bank (the account the money left).",
+      "mandatory_fields": [],
+      "optional_fields": [
+        { "key": "victim_account_number", "label": "Your account number (the one debited)" },
+        { "key": "channel", "label": "Transfer channel (NEFT / IMPS / RTGS / internal)" },
+        { "key": "beneficiary_account_no", "label": "Beneficiary account number the money went to" },
+        { "key": "beneficiary_ifsc", "label": "Beneficiary bank IFSC" },
+        { "key": "compromise_vector", "label": "How your credentials were compromised (phishing link / fake call / malware)" },
+        { "key": "phishing_message", "label": "The phishing email/SMS/website, if that was the vector" },
+        { "key": "transaction_screenshots", "label": "Screenshots of the transaction/confirmation" }
+      ],
+      "evidence_notes": "Most useful: the net-banking transaction confirmation and the account statement showing the debit. If a phishing link or fake call led to it, include that message or the number."
+    },
+
+    "vishing": {
+      "subCategory": "vishing",
+      "label": "Voice phishing (vishing)",
+      "topLevelCategory": "Online Financial Fraud",
+      "institution_field_hint": "The bank or wallet the money was ultimately taken from.",
+      "mandatory_fields": [],
+      "optional_fields": [
+        { "key": "fraudster_phone_number", "label": "Phone number the fraudster called from" },
+        { "key": "payment_method_used", "label": "How the money then left (UPI / card / net banking / wallet)" },
+        { "key": "caller_claimed_identity", "label": "Who the caller claimed to be (bank / KYC / police / delivery / etc.)" },
+        { "key": "info_disclosed", "label": "What you disclosed (OTP / CVV / PIN / screen-share / app install)" },
+        { "key": "remote_access_app", "label": "Any app they made you install (AnyDesk, TeamViewer, etc.)" },
+        { "key": "call_recording", "label": "Recording of the call, if you have one" },
+        { "key": "call_log_screenshot", "label": "Screenshot of your call log showing the number and time" }
+      ],
+      "evidence_notes": "Most useful: a call-log screenshot showing the fraudster's number and timestamp, any recording, and the debit evidence for whichever payment method was used (UPI UTR, card statement line, net-banking confirmation, or wallet history)."
+    },
+
+    "ewallet_theft": {
+      "subCategory": "ewallet_theft",
+      "label": "E-wallet theft",
+      "topLevelCategory": "Online Financial Fraud",
+      "institution_field_hint": "The wallet provider (Paytm, PhonePe, Amazon Pay, Mobikwik, etc.).",
+      "mandatory_fields": [],
+      "optional_fields": [
+        { "key": "wallet_registered_mobile", "label": "Mobile number registered with the wallet" },
+        { "key": "beneficiary_wallet_or_upi", "label": "Where the money went (wallet handle / UPI ID / account)" },
+        { "key": "access_method", "label": "How access was gained (OTP shared / SIM swap / phishing / device lost)" },
+        { "key": "fraudster_phone_number", "label": "Fraudster's phone number" },
+        { "key": "wallet_statement_export", "label": "Wallet transaction history export/screenshot" },
+        { "key": "provider_ticket_reference", "label": "Complaint/ticket reference raised with the wallet provider" },
+        { "key": "sim_swap_evidence", "label": "Evidence of SIM swap (carrier SMS, no-network period), if applicable" }
+      ],
+      "evidence_notes": "Most useful: the wallet's in-app transaction history for the unauthorised debit, the provider's dispute/ticket reference, and any SIM-swap evidence if your number was ported without consent."
+    },
+
+    "demat_fraud": {
+      "subCategory": "demat_fraud",
+      "label": "Demat/trading account fraud",
+      "topLevelCategory": "Online Financial Fraud",
+      "institution_field_hint": "The broker / depository participant.",
+      "mandatory_fields": [],
+      "optional_fields": [
+        { "key": "demat_or_trading_account_id", "label": "Demat or trading account ID (client ID)" },
+        { "key": "dp_id", "label": "DP ID / BO ID" },
+        { "key": "unauthorized_activity_type", "label": "What happened (unauthorised trades / holdings transferred out / funds withdrawn)" },
+        { "key": "affected_securities_or_amount", "label": "Securities affected or amount withdrawn (INR)" },
+        { "key": "access_method", "label": "How access was gained (credentials phished / OTP shared / email compromised)" },
+        { "key": "payout_bank_account", "label": "Bank account any withdrawn funds landed in" },
+        { "key": "broker_statement_or_contract_notes", "label": "Broker contract notes / trade ledger for the disputed activity" },
+        { "key": "account_activity_logs", "label": "Account login and activity logs" }
+      ],
+      "evidence_notes": "Most useful: the broker's contract notes / trade ledger for the disputed activity, the account login and activity logs, the CDSL/NSDL transaction statement, and — if funds were withdrawn — the bank credit trail showing where they went."
+    },
+
+    "email_takeover": {
+      "subCategory": "email_takeover",
+      "label": "Email account takeover leading to financial loss",
+      "topLevelCategory": "Online Financial Fraud",
+      "institution_field_hint": "The bank/card/wallet/investment account the loss actually occurred on.",
+      "mandatory_fields": [],
+      "optional_fields": [
+        { "key": "email_address_compromised", "label": "Email address that was taken over" },
+        { "key": "email_provider", "label": "Email provider (Gmail, Outlook, Yahoo, company mail, etc.)" },
+        { "key": "recovery_details_changed", "label": "Were the recovery email/phone changed by the attacker? (yes/no)" },
+        { "key": "suspicious_login_location", "label": "Unfamiliar login location/device shown in account security" },
+        { "key": "phishing_vector", "label": "How the account was likely compromised (phishing / reused password / malware)" },
+        { "key": "email_login_history", "label": "Email provider's login/activity history (Google 'Recent security activity', Microsoft sign-in logs)" },
+        { "key": "password_reset_emails", "label": "Password-reset or 'new sign-in' emails you received" }
+      ],
+      "evidence_notes": "Most useful: the email provider's login/activity history, the attacker's password-reset or sign-in-alert emails, and the downstream bank/card/wallet debit evidence for the resulting loss."
+    }
+  }
+}

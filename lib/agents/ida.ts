@@ -185,15 +185,19 @@ export async function runIDA(
 
   // Add accumulated extracted data to context
   const accumulatedContext = accumulatedExtracted ? `
-## PREVIOUSLY EXTRACTED (Do not override unless user explicitly corrects):
+## PREVIOUSLY EXTRACTED (Do not override unless user explicitly corrects). Echo these values back in "extracted" unless the user changes them:
 - UTR: ${accumulatedExtracted.utr_or_transaction_id || 'Not yet extracted'}
 - Amount: ${accumulatedExtracted.amount_stolen || 'Not yet extracted'}
 - VPA/Account: ${accumulatedExtracted.destination_vpa_or_account || 'Not yet extracted'}
+- Recipient name: ${accumulatedExtracted.recipient_name || 'Not yet extracted'}
+- Recipient phone: ${accumulatedExtracted.recipient_phone || 'Not yet extracted'}
 - Location: ${accumulatedExtracted.user_location || 'Not yet extracted'}
-- Time: ${accumulatedExtracted.time_since_fraud_minutes || 'Not yet calculated'}
+- Time: ${accumulatedExtracted.time_since_fraud_minutes ?? 'Not yet calculated'}
 - Platform: ${accumulatedExtracted.payment_platform || 'Not yet identified'}
+- User phone: ${accumulatedExtracted.user_phone || 'Not yet provided'}
+- Fraud narrative: ${accumulatedExtracted.fraud_narrative || 'Not yet provided'}
 
-If user provides NEW information, extract and update. Otherwise, PRESERVE previous values.
+If user provides NEW information, extract and update. Otherwise, PRESERVE previous values verbatim.
 ` : ''
 
   // Build user content – PRIORITY: Image first, then text

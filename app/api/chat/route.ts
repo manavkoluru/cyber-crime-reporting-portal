@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import OpenAI from 'openai'
+import { getSession, storeReady } from '@/lib/store'
 import { runIDA } from '@/lib/agents/ida'
 import { runRouter } from '@/lib/agents/router'
-import { runFileComplaint } from '@/lib/agents/fileComplaint'
+import { runFileComplaint, NARRATIVE_SENTINEL } from '@/lib/agents/fileComplaint'
 import { runRetrieval } from '@/lib/agents/retrieval'
 import { runFallback } from '@/lib/agents/fallback'
+import {
+  runClassifier,
+  buildClassificationPreamble,
+  SUBCATEGORY_LABEL,
+  TOP_LEVEL_CATEGORY,
+} from '@/lib/classification'
+import type { ClassificationOverlap, FinanceFraudSubCategory } from '@/lib/classification'
+
+const RECLASSIFY_CONFIDENCE = 0.85
 
 export const maxDuration = 60 // Vercel function timeout (seconds)
 
@@ -19,35 +29,42 @@ function getOpenAI() {
 
 type ExtractedDetails = NonNullable<Awaited<ReturnType<typeof runIDA>>['extracted']>
 
-function buildExtractionChecklist(extracted?: ExtractedDetails) {
-  if (!extracted) return undefined
+function buildExtractionChecklist(
+  extracted?: ExtractedDetails,
+  opts: { alwaysShow?: boolean } = {}
+) {
+  const e = extracted ?? ({} as ExtractedDetails)
 
   const recipient = [
-    extracted.destination_vpa_or_account,
-    extracted.recipient_name,
-    extracted.recipient_phone,
+    e.destination_vpa_or_account,
+    e.recipient_name,
+    e.recipient_phone,
   ].filter(Boolean).join(' · ')
 
-  const timeDisplay = extracted.time_since_fraud_minutes
-    ? `${extracted.time_display || formatTimeAgo(extracted.time_since_fraud_minutes)}`
+  const timeDisplay = e.time_since_fraud_minutes
+    ? `${e.time_display || formatTimeAgo(e.time_since_fraud_minutes)}`
     : null
 
   const items = [
-    { label: 'Transaction ID / UTR', value: extracted.utr_or_transaction_id || extracted.phonepe_transaction_id || null },
-    { label: 'Amount involved', value: extracted.amount_stolen ? `₹${extracted.amount_stolen}` : null },
-    { label: 'Recipient VPA, mobile, or account', value: recipient || null },
+    { label: 'Transaction ID / UTR', value: e.utr_or_transaction_id || e.phonepe_transaction_id || null },
+    { label: 'Amount involved', value: e.amount_stolen ? `₹${e.amount_stolen}` : null },
     { label: 'Time since incident', value: timeDisplay || null },
-    { label: 'Sender bank (from/debited)', value: extracted.sender_bank || null },
-    { label: 'Receiver bank (to)', value: extracted.receiver_bank || null },
-    { label: 'Payment method', value: extracted.payment_platform || null },
+    { label: 'Your phone number', value: e.user_phone || null },
+    { label: 'Your location / pincode', value: e.user_location || null },
+    { label: 'Payment method', value: e.payment_platform || null },
+    { label: 'Sender bank (from/debited)', value: e.sender_bank || null },
+    { label: 'Recipient VPA, mobile, or account', value: recipient || null, optional: true },
+    { label: 'Receiver bank (to)', value: e.receiver_bank || null, optional: true },
   ]
   const hasExtractedValue = items.some((item) => item.value)
 
-  if (!hasExtractedValue) return undefined
+  // Show the checklist as soon as ANYTHING is extracted, OR unconditionally when the
+  // caller asks (the first File-Complaint turn shows it as the "here's what I need" list).
+  if (!hasExtractedValue && !opts.alwaysShow) return undefined
 
   return {
     items,
-    remaining: items.filter((item) => !item.value).map((item) => item.label),
+    remaining: items.filter((item) => !item.value && !item.optional).map((item) => item.label),
   }
 }
 
@@ -68,6 +85,7 @@ function formatTimeAgo(minutes: number | null | undefined): string {
 
 export async function POST(req: NextRequest) {
   try {
+    await storeReady // don't file on top of an un-loaded complaint set
     const openai = getOpenAI()
     const formData = await req.formData()
     const message = (formData.get('message') as string) || ''
@@ -75,20 +93,38 @@ export async function POST(req: NextRequest) {
     const history = JSON.parse((formData.get('history') as string) || '[]')
     const file = formData.get('file') as File | null
 
-    // Extract phone number from OTP session if user logged in via mobile
+    // Determine authentication. Two login systems exist:
+    //  - OTP login   -> `session` cookie (JSON) carrying `phone`
+    //  - user/pass    -> `auth_session` cookie (opaque id) resolved via the staff store
+    // Any logged-in user counts as authenticated; phone is used to pre-fill the complaint if present.
     let phoneFromSession: string | null = null
+    let complainantUserId: string | null = null
+    let isAuthenticated = false
     try {
       const cookieStore = await cookies()
+
       const sessionCookie = cookieStore.get('session')?.value
       if (sessionCookie) {
         const session = JSON.parse(sessionCookie)
-        phoneFromSession = session.phone || null
-        if (phoneFromSession) {
-          console.log(`[Chat API] User logged in via OTP, phone available: +91${phoneFromSession}`)
+        if (session?.userId) {
+          isAuthenticated = true
+          phoneFromSession = session.phone || null
+          complainantUserId = String(session.userId)
+          console.log(`[Chat API] Authenticated via OTP session${phoneFromSession ? `, phone +91${phoneFromSession}` : ''}`)
+        }
+      }
+
+      if (!isAuthenticated) {
+        const authSessionId = cookieStore.get('auth_session')?.value
+        const staffSession = authSessionId ? getSession(authSessionId) : undefined
+        if (staffSession) {
+          isAuthenticated = true
+          complainantUserId = staffSession.userId
+          console.log('[Chat API] Authenticated via username/password session')
         }
       }
     } catch (err) {
-      // Session cookie may not exist, continue without it
+      // Cookie may not exist / be malformed – treat as unauthenticated.
     }
 
     // — Process uploaded file
@@ -109,30 +145,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // — Extract previously accumulated state from chat history
+    // — Recover previously accumulated state.
+    // The client echoes each assistant message's metadata back in `history`, so the
+    // most recent `extractedState` is the authoritative running state for this session.
     let accumulatedExtracted: any = {}
-    // Accumulate from ALL previous assistant messages, not just the most recent
-    for (const msg of history) {
-      if (msg.role === 'assistant') {
-        // Try to extract previously identified fields from bot responses
-        if (msg.content.includes('Transaction ID') || msg.content.includes('UTR') || msg.content.includes('₹')) {
-          // Parse bot's previous message for data (this helps maintain context)
-          const utrMatch = msg.content.match(/(?:UTR|Transaction ID|URN)[\s:]*([A-Z0-9]{10,})/i)
-          if (utrMatch && !accumulatedExtracted.utr_or_transaction_id) {
-            accumulatedExtracted.utr_or_transaction_id = utrMatch[1]
-          }
-
-          const amountMatch = msg.content.match(/₹([\d,]+)/);
-          if (amountMatch && !accumulatedExtracted.amount_stolen) {
-            accumulatedExtracted.amount_stolen = amountMatch[1].replace(/,/g, '')
-          }
-
-          const vpaMatch = msg.content.match(/(?:to|VPA|account)[\s:]*([a-z0-9.]+@[a-z]+)/i)
-          if (vpaMatch && !accumulatedExtracted.destination_vpa_or_account) {
-            accumulatedExtracted.destination_vpa_or_account = vpaMatch[1]
-          }
-        }
-        break // Only check most recent assistant message
+    for (let i = history.length - 1; i >= 0; i--) {
+      const msg = history[i]
+      if (msg.role === 'assistant' && msg.metadata?.extractedState) {
+        accumulatedExtracted = { ...msg.metadata.extractedState }
+        break
       }
     }
 
@@ -146,8 +167,45 @@ export async function POST(req: NextRequest) {
       accumulatedExtracted && Object.keys(accumulatedExtracted).length > 0 ? accumulatedExtracted : undefined
     )
 
+    // Merge running state with this turn's fresh extraction.
+    // A fresh NON-EMPTY value wins; a null/undefined/'' from this turn must NOT
+    // clobber a value we already accumulated in earlier turns.
+    const mergedExtracted: any = { ...accumulatedExtracted }
+    const fresh = (idaResult.extracted || {}) as Record<string, any>
+    for (const [k, v] of Object.entries(fresh)) {
+      if (v !== null && v !== undefined && v !== '') {
+        mergedExtracted[k] = v
+      }
+    }
+    idaResult.extracted = mergedExtracted
+    const resolvedLocation = mergedExtracted.user_location || accumulatedExtracted.user_location || undefined
+
     // — Step 2: Route
     const route = await runRouter(idaResult)
+
+    // Sticky File-Complaint: once a complaint is in progress, every follow-up user
+    // turn stays with the File-Complaint agent, even if IDA reads this message as
+    // off-topic (e.g. an emotional disclosure during the "modify" step). That path
+    // owns re-classification, overlap detection, and the urgent-helpline notice.
+    const complaintInProgress =
+      !!accumulatedExtracted.classification ||
+      history.some(
+        (m: any) =>
+          m.role === 'assistant' &&
+          (m.metadata?.agent === 'File Complaint' ||
+            m.metadata?.agent === 'Classification' ||
+            m.metadata?.awaitingModification ||
+            m.metadata?.awaitingClassificationAck ||
+            (m.metadata?.extractedState && Object.keys(m.metadata.extractedState).length > 2))
+      )
+    if (
+      complaintInProgress &&
+      route.route_to !== 'FILE_COMPLAINT_AGENT' &&
+      route.route_to !== 'RETRIEVAL_AGENT' // a genuine "check my status" can still leave
+    ) {
+      route.route_to = 'FILE_COMPLAINT_AGENT'
+      route.reason = 'Sticky: complaint in progress, keeping this turn in File-Complaint'
+    }
 
     // — Step 3: Run action agent
     let agentResponse: { message: string; metadata: Record<string, unknown> } = {
@@ -156,10 +214,226 @@ export async function POST(req: NextRequest) {
     }
 
     switch (route.route_to) {
-      case 'FILE_COMPLAINT_AGENT':
-        // Pass extracted data to complaint agent to maintain context and pre-fill phone from session
-        agentResponse = await runFileComplaint(openai, message, history, idaResult, route, idaResult.extracted?.user_location || undefined, fileBase64, fileMediaType, idaResult.extracted, phoneFromSession)
+      case 'FILE_COMPLAINT_AGENT': {
+        type StoredClassification = {
+          subCategory?: FinanceFraudSubCategory
+          confidence?: number
+          explanation?: string
+          preambleShown?: boolean
+          overlaps?: ClassificationOverlap[]
+          overlapUrgent?: boolean
+          reclassifiedFrom?: FinanceFraudSubCategory
+          noticeShown?: boolean
+        }
+        const prevClassification = accumulatedExtracted.classification as
+          | StoredClassification
+          | undefined
+        let classification: StoredClassification | undefined = prevClassification
+        let classificationPreamble: string | undefined
+
+        // Turns that carry fresh free-text the user expects us to REASSESS (re-classify,
+        // detect non-financial overlaps, escalate): the dedicated narrative reply, and
+        // any message in the "modify before filing" loop.
+        const lastAssistant = [...history].reverse().find((m: any) => m.role === 'assistant')
+        const lastAssistantText = String(lastAssistant?.content ?? '').toLowerCase()
+        const wordCount = message.trim().split(/\s+/).length
+        const isNarrativeTurn =
+          !!lastAssistant &&
+          lastAssistantText.includes(NARRATIVE_SENTINEL) &&
+          wordCount >= 4
+        const isModifyTurn =
+          !!lastAssistant &&
+          lastAssistantText.includes('what would you like to modify') &&
+          wordCount >= 4
+        const isReassessTurn = isNarrativeTurn || isModifyTurn
+
+        // A clean yes/no/short answer to the file prompt is NOT new narrative — don't
+        // let the reclassify/overlap notice hijack a legitimate confirmation turn.
+        // (A NEW overlap still breaks through below, that check is separate.)
+        const isBareConfirmAnswer =
+          wordCount <= 5 &&
+          /^(yes|yep|yeah|ok|okay|sure|no|nope|not now|not yet|file it|yes file it|yes, file it\.?|go ahead|proceed|confirm|cancel|stop|wait)[.! ]*$/.test(
+            message.trim().toLowerCase()
+          )
+
+        let reclassified: { from: FinanceFraudSubCategory; to: FinanceFraudSubCategory } | undefined
+        let freshOverlaps: ClassificationOverlap[] = prevClassification?.overlaps ?? []
+        let freshOverlapUrgent = !!prevClassification?.overlapUrgent
+
+        // Skip re-classification entirely on a bare yes/no to the file prompt: it
+        // carries no new narrative, and re-scanning the OLD narrative here would
+        // wrongly block a legitimate confirmation.
+        try {
+          if (isBareConfirmAnswer) throw { __skip: true }
+          const c = await runClassifier(openai, {
+            text: [message, mergedExtracted.fraud_narrative].filter(Boolean).join('\n\n'),
+            knownDetails: mergedExtracted,
+          })
+          // Overlaps + urgency come back on EVERY classifier result, including FALLBACK
+          // (e.g. a non-delivery dispute that also carries a blackmail threat). Capture
+          // them regardless of whether a financial sub-category was assigned.
+          freshOverlaps = c.overlaps
+          freshOverlapUrgent = c.overlapUrgent
+          if (c.status === 'CLASSIFIED' && c.subCategory) {
+            const prevSub = prevClassification?.subCategory
+            const differs = !!prevSub && c.subCategory !== prevSub
+            // Only SWITCH sub-category on high confidence (or first classification).
+            const switchNow = !prevSub || (differs && c.confidence >= RECLASSIFY_CONFIDENCE)
+
+            const effectiveSub = switchNow ? c.subCategory : prevSub!
+            if (!prevSub || (switchNow && differs)) {
+              classificationPreamble = buildClassificationPreamble(effectiveSub)
+            }
+            if (switchNow && differs) {
+              reclassified = { from: prevSub!, to: c.subCategory }
+            }
+
+            // If this reassess turn surfaced NEW overlap info that wasn't flagged
+            // before, un-suppress the notice so a fresh escalation is always shown.
+            const prevOverlapAreas = new Set(
+              (prevClassification?.overlaps ?? []).map((o) => o.area)
+            )
+            const hasNewOverlap = freshOverlaps.some((o) => !prevOverlapAreas.has(o.area))
+            const noticeShown =
+              hasNewOverlap || (reclassified && isReassessTurn)
+                ? false
+                : prevClassification?.noticeShown
+
+            classification = {
+              subCategory: effectiveSub,
+              confidence: c.confidence,
+              explanation: switchNow ? c.explanation : prevClassification?.explanation,
+              preambleShown:
+                !!prevClassification?.preambleShown && !(switchNow && differs),
+              overlaps: freshOverlaps,
+              overlapUrgent: freshOverlapUrgent,
+              reclassifiedFrom: reclassified?.from ?? prevClassification?.reclassifiedFrom,
+              noticeShown,
+            }
+          } else {
+            // Not CLASSIFIED (FALLBACK / CLARIFY) but overlaps may still be present.
+            // Keep any prior sub-category; just carry the fresh overlap info forward.
+            const prevAreasLocal = new Set(
+              (prevClassification?.overlaps ?? []).map((o) => o.area)
+            )
+            const hasNew = freshOverlaps.some((o) => !prevAreasLocal.has(o.area))
+            classification = {
+              ...prevClassification,
+              overlaps: freshOverlaps,
+              overlapUrgent: freshOverlapUrgent,
+              noticeShown: hasNew ? false : prevClassification?.noticeShown,
+            }
+          }
+        } catch (e) {
+          if (!(e && (e as any).__skip)) {
+            console.error('[Chat API] classification failed (non-fatal):', e)
+          }
+        }
+        mergedExtracted.classification = classification
+
+        // — GLOBAL SAFETY GATE. Runs on EVERY File-Complaint turn, not just narrative /
+        //   modify turns. If this message surfaced a NEW non-financial overlap (harassment,
+        //   women & children, extortion, stalking, data breach), OR we reclassified,
+        //   respond with that as its OWN turn. NEVER file on a turn where a fresh overlap
+        //   appeared. Filing requires the user to come back with an explicit "file it".
+        const prevAreas = new Set((prevClassification?.overlaps ?? []).map((o) => o.area))
+        const newOverlaps = freshOverlaps.filter((o) => !prevAreas.has(o.area))
+        const hasNewOverlapNow = newOverlaps.length > 0
+        // Say something if: we reclassified, OR a brand-new overlap appeared (always,
+        // even if a notice was shown before), OR there are overlaps not yet acknowledged.
+        const hasSomethingToSay =
+          !!reclassified ||
+          hasNewOverlapNow ||
+          (freshOverlaps.length > 0 && !classification?.noticeShown)
+
+        // A reclassification alone should not interrupt a bare "yes/no" to the file
+        // prompt. A brand-new overlap always breaks through, even then.
+        const shouldSurface =
+          (hasNewOverlapNow && !classification?.noticeShown) ||
+          (!isBareConfirmAnswer && (isReassessTurn || !!reclassified) && hasSomethingToSay)
+
+        if (shouldSurface) {
+          const primarySub =
+            classification?.subCategory ??
+            (prevClassification?.subCategory as FinanceFraudSubCategory | undefined)
+          const hasUrgentOverlap = freshOverlaps.some((o) => o.urgent)
+          const parts: string[] = []
+
+          if (reclassified) {
+            parts.push(
+              `Reading your description, this is closer to **${SUBCATEGORY_LABEL[reclassified.to]}** than ${SUBCATEGORY_LABEL[reclassified.from]}, so I'm recording it under that.`
+            )
+            if (classificationPreamble) parts.push(classificationPreamble)
+          }
+
+          if (freshOverlaps.length > 0) {
+            const names = freshOverlaps.map((o) => `**${o.label}**`).join(', ')
+            if (hasUrgentOverlap) {
+              // Empathetic, urgent, on the user's side.
+              parts.push(
+                `I hear you, and I'm really sorry you're dealing with this. What you've described involves ${names}, and that is serious. **You have been wronged, and none of this is your fault.**`
+              )
+              parts.push(
+                `Please call **1930** (the national cyber helpline) right now, and dial **112** if anyone is in immediate danger. Do not let anyone pressure you into staying silent. Reporting is your right.`
+              )
+              parts.push(
+                `Rakshak AI does not yet fully support complaints in these areas, but we are working hard to add them. For now, 1930 is the fastest way to get the right help on this.`
+              )
+              if (primarySub) {
+                parts.push(
+                  `I can still help you file the financial-fraud part (**${SUBCATEGORY_LABEL[primarySub]}**, under "${TOP_LEVEL_CATEGORY}") whenever you're ready, but only if and when you want to. I will not file anything without you telling me to.`
+                )
+              }
+            } else {
+              parts.push(
+                primarySub
+                  ? `I'm filing this as **${SUBCATEGORY_LABEL[primarySub]}**, under "${TOP_LEVEL_CATEGORY}". What you've described also touches ${names}. Rakshak AI can only file the financial-fraud part; those other areas aren't supported here yet.`
+                  : `What you've described also touches ${names}, which Rakshak AI can't file here yet.`
+              )
+            }
+          }
+
+          parts.push(
+            hasUrgentOverlap
+              ? primarySub
+                ? 'When you feel ready, tell me if you\'d still like to go ahead with the financial-fraud complaint, or say "not now" and we can pause.'
+                : 'I\'m here whenever you want to talk this through. If there is a financial-fraud part you also want to report, tell me and we can work on that together.'
+              : isModifyTurn
+                ? 'Once you\'ve noted that, tell me the single detail you want to change and what it should be.'
+                : 'When you\'re ready, say "continue" and I\'ll show you the summary to file.'
+          )
+
+          classification = { ...classification, noticeShown: true }
+          mergedExtracted.classification = classification
+
+          agentResponse = {
+            message: parts.join('\n\n'),
+            metadata: {
+              agent: 'Classification',
+              priority: hasUrgentOverlap ? 'URGENT' : 'NORMAL',
+              awaitingClassificationAck: !isModifyTurn,
+              awaitingModification: isModifyTurn,
+              overlaps: freshOverlaps.map((o) => ({
+                label: o.label,
+                note: o.note,
+                urgent: o.urgent,
+              })),
+              callHelpline: hasUrgentOverlap
+                ? { number: '1930', reason: 'A non-financial part of this report may be urgent.' }
+                : undefined,
+              extractedState: { ...mergedExtracted, classification },
+            },
+          }
+          break
+        }
+
+        // Belt-and-braces: block filing on a turn where NEW overlap/danger signal
+        // appeared, or where we reclassified. (A previously-acknowledged overlap does
+        // NOT block, the user can still choose to file the financial part.)
+        const blockFiling = hasNewOverlapNow || !!reclassified
+        agentResponse = await runFileComplaint(openai, message, history, idaResult, route, resolvedLocation, fileBase64, fileMediaType, idaResult.extracted, phoneFromSession, isAuthenticated, classificationPreamble, classification as Record<string, unknown> | undefined, blockFiling, complainantUserId)
         break
+      }
       case 'RETRIEVAL_AGENT':
         // Pass phone from session so user doesn't need to re-enter it
         agentResponse = await runRetrieval(openai, message, history, idaResult, phoneFromSession)
@@ -179,7 +453,17 @@ export async function POST(req: NextRequest) {
       message: agentResponse.message,
       metadata: {
         ...agentResponse.metadata,
-        extraction: buildExtractionChecklist(idaResult.extracted),
+        // Persist the running state on EVERY turn, not just File-Complaint turns,
+        // so info extracted during small talk / fallback isn't dropped.
+        // (File-Complaint returns its own richer extractedState which wins here.)
+        extractedState: {
+          ...mergedExtracted,
+          user_location: resolvedLocation,
+          ...(agentResponse.metadata?.extractedState as Record<string, unknown> | undefined),
+        },
+        extraction: buildExtractionChecklist(idaResult.extracted, {
+          alwaysShow: route.route_to === 'FILE_COMPLAINT_AGENT',
+        }),
         goldenHour: idaResult.extracted?.golden_hour_active === true,
         route: route.route_to,
       },

@@ -5,12 +5,23 @@ import { formatTimeAgo } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { v4 as uuidv4 } from 'uuid'
 import Link from 'next/link'
+import { BootingScreen, BOOT_MS } from '@/app/components/BootingScreen'
 
 // Icon components
 type IconProps = { className?: string }
 const Shield = ({ className }: IconProps) => <span className={className || 'text-white'}>🛡️</span>
-const Upload = ({ className }: IconProps) => <span className={className}>📤</span>
-const Send = ({ className }: IconProps) => <span className={className}>📤</span>
+const Upload = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+)
+const Send = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <line x1="12" y1="19" x2="12" y2="5" />
+    <polyline points="6 11 12 5 18 11" />
+  </svg>
+)
 const Mic = ({ className }: IconProps) => <span className={className}>🎤</span>
 const MicOff = ({ className }: IconProps) => <span className={className}>🔇</span>
 const X = ({ className }: IconProps) => <span className={className}>✕</span>
@@ -25,8 +36,11 @@ interface MessageMetadata {
   route?: string
   requiresOTP?: boolean
   otpPhone?: string
+  confirmActions?: Array<{ label: string; value: string }>
+  callHelpline?: { number: string; reason?: string }
+  overlaps?: Array<{ label: string; note: string; urgent: boolean }>
   extraction?: {
-    items: Array<{ label: string; value: string | null }>
+    items: Array<{ label: string; value: string | null; optional?: boolean }>
     remaining: string[]
   }
 }
@@ -65,43 +79,71 @@ function TypingIndicator() {
 }
 
 function formatContent(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g)
-  return parts.map((part, i) =>
-    part.startsWith('**') && part.endsWith('**') ? (
-      <strong key={i}>{part.slice(2, -2)}</strong>
-    ) : part.startsWith('*') && part.endsWith('*') ? (
-      <span key={i}>{part.slice(1, -1)}</span>
-    ) : (
-      <span key={i}>{part}</span>
-    )
-  )
+  // Split on markdown links [label](url), **bold**, and *italic* — in that order.
+  const parts = text.split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*)/g)
+  return parts.map((part, i) => {
+    const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
+    if (link) {
+      return (
+        <a
+          key={i}
+          href={link[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-400 underline underline-offset-2 hover:text-blue-300"
+        >
+          {link[1]}
+        </a>
+      )
+    }
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <span key={i}>{part.slice(1, -1)}</span>
+    }
+    return <span key={i}>{part}</span>
+  })
 }
 
 function ExtractionChecklist({ extraction }: { extraction: NonNullable<MessageMetadata['extraction']> }) {
+  const anyFound = extraction.items.some((item) => item.value)
   return (
-    <section className="mt-3 rounded-xl border border-slate-600 bg-slate-900/80 p-3 not-italic" aria-label="Extracted transaction details">
-      <h3 className="text-xs font-bold uppercase tracking-wide text-slate-200">Transaction details found</h3>
+    <section className="mt-3 rounded-xl border border-slate-600 bg-slate-900/80 p-3 not-italic" aria-label="Complaint details checklist">
+      <h3 className="text-xs font-bold uppercase tracking-wide text-slate-200">
+        {anyFound ? 'Details so far' : 'Details needed to file'}
+      </h3>
       <ul className="mt-2 space-y-2">
-        {extraction.items.map((item) => (
-          <li key={item.label} className="flex gap-2 text-sm">
-            <span aria-hidden="true" className={item.value ? 'text-emerald-400' : 'text-amber-400'}>{item.value ? '✓' : '•'}</span>
-            <span className="min-w-0">
-              <span className="text-slate-400">{item.label}: </span>
-              <span className={item.value ? 'font-medium text-white' : 'text-amber-200'}>{item.value || 'Still needed'}</span>
-            </span>
-          </li>
-        ))}
+        {extraction.items.map((item) => {
+          const bulletColor = item.value ? 'text-emerald-400' : item.optional ? 'text-sky-400' : 'text-amber-400'
+          const textColor = item.value ? 'font-medium text-white' : item.optional ? 'text-sky-300' : 'text-amber-200'
+          const placeholder = item.optional ? 'Optional' : 'Still needed'
+          return (
+            <li key={item.label} className="flex gap-2 text-sm">
+              <span aria-hidden="true" className={bulletColor}>{item.value ? '✓' : '•'}</span>
+              <span className="min-w-0">
+                <span className="text-slate-400">{item.label}: </span>
+                <span className={textColor}>{item.value || placeholder}</span>
+              </span>
+            </li>
+          )
+        })}
       </ul>
-      {extraction.remaining.length > 0 && (
-        <p className="mt-3 border-t border-slate-700 pt-2 text-xs text-amber-100">
-          Please provide: {extraction.remaining.join(', ')}.
-        </p>
-      )}
     </section>
   )
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({
+  message,
+  onAction,
+  actionsDisabled,
+  showQuickActions,
+}: {
+  message: Message
+  onAction?: (value: string) => void
+  actionsDisabled?: boolean
+  showQuickActions?: boolean
+}) {
   const isUser = message.role === 'user'
 
   return (
@@ -132,7 +174,7 @@ function MessageBubble({ message }: { message: Message }) {
           <div className="flex items-center gap-2 max-w-[200px] space-y-2">
             {message.metadata.goldenHour && (
               <div className="flex items-center gap-2 bg-orange-600 rounded-xl px-3 py-2 text-white text-sm font-bold animate-pulse-slow">
-                ⚡ GOLDEN HOUR ACTIVE – Funds may be recoverable!
+                ⚡ GOLDEN HOUR ACTIVE. Funds may be recoverable!
               </div>
             )}
           </div>
@@ -153,6 +195,57 @@ function MessageBubble({ message }: { message: Message }) {
             🔍 Track complaint status
           </Link>
         )}
+        {message.metadata?.overlaps && message.metadata.overlaps.length > 0 && !isUser && (
+          <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-950/30 p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-amber-300">
+              Also involves (not filed here)
+            </p>
+            <ul className="mt-1.5 space-y-1">
+              {message.metadata.overlaps.map((o, i) => (
+                <li key={i} className="text-sm text-amber-100">
+                  <span className="font-medium">{o.label}</span>
+                  {o.note ? <span className="text-amber-200/80">: {o.note}</span> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {message.metadata?.callHelpline && !isUser && (
+          <a
+            href={`tel:${message.metadata.callHelpline.number}`}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
+          >
+            📞 Call {message.metadata.callHelpline.number} now
+          </a>
+        )}
+        {message.metadata?.confirmActions && message.metadata.confirmActions.length > 0 && !isUser && (
+          <div className="mt-3 flex flex-col gap-2 border-t border-white/10 pt-3">
+            {message.metadata.confirmActions.map((action) => (
+              <button
+                key={action.value}
+                onClick={() => onAction?.(action.value)}
+                disabled={actionsDisabled}
+                className="w-full rounded-lg border border-slate-500 bg-slate-700/60 px-4 py-2 text-left text-sm font-medium text-white transition-colors hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {showQuickActions && !isUser && (
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-3">
+            {QUICK_ACTIONS.map((action) => (
+              <button
+                key={action.label}
+                onClick={() => onAction?.(action.text)}
+                disabled={actionsDisabled}
+                className="rounded-full border border-gray-600 bg-gray-700/60 px-3 py-1.5 text-xs font-medium text-gray-100 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -161,6 +254,13 @@ function MessageBubble({ message }: { message: Message }) {
 export default function ChatPage() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  // Show the "Rakshak AI is booting" transition on every fresh open of the chat.
+  const [booting, setBooting] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setBooting(false), BOOT_MS)
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     // Check if user has valid session
@@ -186,9 +286,13 @@ export default function ChatPage() {
     {
       id: uuidv4(),
       role: 'assistant',
-      content: `Namaste! I'm Rakshak AI — I'll help you file your cyber crime complaint.
+      content: `Namaste! I'm Rakshak AI.
+I'll help you file your cyber crime complaint.
 
-What happened? You can type it out, click the mic icon to speak, and upload any supporting documents. I'll go through it and work with you on the next steps.`,
+Can you tell me what happened? You can type it out, click the mic icon to speak, and upload any supporting documents.
+I'll go through it and work with you on the next steps.
+
+Here are a few quick options:`,
       timestamp: new Date(),
     },
   ])
@@ -243,13 +347,14 @@ What happened? You can type it out, click the mic icon to speak, and upload any 
     }
   }
 
-  const handleSend = async () => {
-    if (!input.trim() && !uploadedFile) return
+  const handleSend = async (overrideText?: string) => {
+    const outgoing = typeof overrideText === 'string' ? overrideText : input
+    if (!outgoing.trim() && !uploadedFile) return
 
     const userMessage: Message = {
       id: uuidv4(),
       role: 'user',
-      content: input.trim() || 'I have uploaded a file for analysis.',
+      content: outgoing.trim() || 'I have uploaded a file for analysis.',
       timestamp: new Date(),
       fileAttached: uploadedFile?.name,
     }
@@ -267,7 +372,7 @@ What happened? You can type it out, click the mic icon to speak, and upload any 
       const formData = new FormData()
       formData.append('message', userMessage.content)
       formData.append('sessionId', uuidv4())
-      formData.append('history', JSON.stringify(messages.slice(-8).map((m) => ({ role: m.role, content: m.content }))))
+      formData.append('history', JSON.stringify(messages.slice(-8).map((m) => ({ role: m.role, content: m.content, metadata: m.metadata }))))
       if (uploadedFile) {
         formData.append('file', uploadedFile)
       }
@@ -341,7 +446,7 @@ What happened? You can type it out, click the mic icon to speak, and upload any 
         {
           id: uuidv4(),
           role: 'assistant',
-          content: 'I apologize – something went wrong on my end. Please try again, or call **1930** (National Cyber Helpline, available 24x7 and free).',
+          content: 'I apologize, something went wrong on my end. Please try again, or call **1930** (National Cyber Helpline, available 24x7 and free).',
           timestamp: new Date(),
         },
       ])
@@ -551,12 +656,8 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to home..
     recognition.start()
   }
 
-  if (isAuthenticated === null) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    )
+  if (booting || isAuthenticated === null) {
+    return <BootingScreen />
   }
 
   return (
@@ -596,23 +697,18 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to home..
 
       {/* Messages */}
       <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 space-y-4 relative">
-        {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+        {messages.map((message, idx) => (
+          <MessageBubble
+            key={message.id}
+            message={message}
+            onAction={(value) => handleSend(value)}
+            actionsDisabled={isLoading || idx !== messages.length - 1}
+            showQuickActions={idx === 0 && messages.length === 1}
+          />
         ))}
         {isLoading && <TypingIndicator />}
         <div ref={messagesEndRef} />
       </div>
-
-      {/* Quick Actions */}
-      {messages.length === 1 && (
-        <div className="px-4 pb-2 flex gap-2 flex-wrap">
-          {QUICK_ACTIONS.map((action) => (
-            <button key={action.label} onClick={() => setInput(action.text)} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 rounded-full px-3 py-1.5 transition-colors">
-              {action.label}
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* File Preview */}
       {uploadedFile && (
@@ -663,7 +759,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to home..
               {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
             </button>
             <textarea ref={textareaRef} value={input} onChange={handleTextareaChange} onKeyDown={handleKeyDown} placeholder="Tell me what happened, or upload a screenshot..." className="flex-1 bg-gray-800 text-white placeholder-gray-500 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-600 min-h-[48px] max-h-[120px]" />
-            <button onClick={handleSend} disabled={isLoading || (!input.trim() && !uploadedFile)} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-colors flex-shrink-0">
+            <button onClick={() => handleSend()} disabled={isLoading || (!input.trim() && !uploadedFile)} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-colors flex-shrink-0">
               <Send className="w-5 h-5" />
             </button>
           </div>
