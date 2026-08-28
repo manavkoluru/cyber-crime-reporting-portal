@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { Facebook, Instagram, Linkedin, Send, Twitter, Youtube } from 'lucide-react'
@@ -62,7 +61,7 @@ export function GovHeader({
   subtitle?: string
   rightSlot?: React.ReactNode
 }) {
-  const [imgOk, setImgOk] = useState(true)
+  const [imgOk, setImgOk] = useState(false)
 
   return (
     <>
@@ -71,7 +70,8 @@ export function GovHeader({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-3 min-w-0">
             {imgOk ? (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src="/images/emblem-india.png"
                 alt="Emblem of India"
                 width={48}

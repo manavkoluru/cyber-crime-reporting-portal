@@ -72,7 +72,7 @@ export default function SessionGuard() {
     idleOpenRef.current = false
     loggedInRef.current = false
     await logoutRequest()
-    window.location.replace('/login')
+    window.location.replace('/')
   }, [clearIdleTimers])
 
   const openIdleWarning = useCallback(() => {
@@ -263,8 +263,8 @@ export default function SessionGuard() {
       <ModalShell title="Session Ended">
         <p className="px-5 py-4 text-sm leading-relaxed text-gray-700">{notice}</p>
         <ModalFooter>
-          <PrimaryButton onClick={() => window.location.replace('/login')}>
-            Go to Login
+          <PrimaryButton onClick={() => window.location.replace('/')}>
+            Go to Home
           </PrimaryButton>
         </ModalFooter>
       </ModalShell>

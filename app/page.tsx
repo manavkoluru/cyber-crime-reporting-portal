@@ -119,12 +119,12 @@ export default function HomePage() {
               {
                 step: '2',
                 title: 'Your complaint, filed in under 2 minutes',
-                desc: "Powered by GPT-4o, RakshakAI reads your documents, identifies the fraud type, flags urgency, and routes your case to the right department. Filing time drops from 40+ minutes to under 2.",
+                desc: "Powered by GPT-4o, Rakshak AI reads your documents, identifies the fraud type, flags urgency, and routes your case to the right department. Filing time drops from 40+ minutes to under 2.",
               },
               {
                 step: '3',
                 title: 'Track, protect, recover',
-                desc: 'Follow your case in real time with updates from your case officer. Reported within the golden hour? RakshakAI can flag it as urgent, alert your bank to block suspicious transactions, and trigger the recovery process.',
+                desc: 'Follow your case in real time with updates from your case officer. Reported within the golden hour? Rakshak AI can flag it as urgent, alert your bank to block suspicious transactions, and trigger the recovery process.',
               },
             ].map((item, i) => (
               <div key={i} className="py-8 px-0 md:px-8 first:pl-0 last:pr-0">
@@ -143,15 +143,15 @@ export default function HomePage() {
             {[
               {
                 title: 'Secure & Private',
-                desc: 'Your data is encrypted and handled only by government cyber agencies. RakshakAI never shares your information with anyone else.',
+                desc: 'Your data is encrypted and handled only by government cyber agencies. Rakshak AI never shares your information with anyone else.',
               },
               {
                 title: 'Available 24/7',
-                desc: 'No office hours, no queues. RakshakAI is always on — report the moment it happens, day or night.',
+                desc: 'No office hours, no queues. Rakshak AI is always on — report the moment it happens, day or night.',
               },
               {
                 title: 'Backed by a Real Case Officer',
-                desc: 'RakshakAI files your complaint instantly, but a human case officer owns and follows through on your case.',
+                desc: 'Rakshak AI files your complaint instantly, but a human case officer owns and follows through on your case.',
               },
             ].map((feature, i) => (
               <div

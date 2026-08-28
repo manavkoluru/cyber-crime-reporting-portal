@@ -23,6 +23,8 @@ interface MessageMetadata {
   trackComplaint?: boolean
   goldenHour?: boolean
   route?: string
+  requiresOTP?: boolean
+  otpPhone?: string
   extraction?: {
     items: Array<{ label: string; value: string | null }>
     remaining: string[]
@@ -105,9 +107,13 @@ function MessageBubble({ message }: { message: Message }) {
   return (
     <div className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {!isUser && (
-        <div className="bg-red-600 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">
+        <Link
+          href="/report-fraud"
+          className="bg-red-600 hover:bg-red-700 transition rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0"
+          title="Learn about Rakshak AI"
+        >
           <Shield className="w-4 h-4 text-white" />
-        </div>
+        </Link>
       )}
       <div
         className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
@@ -180,18 +186,9 @@ export default function ChatPage() {
     {
       id: uuidv4(),
       role: 'assistant',
-      content: `🛡️ **Namaste! I'm here to help you fight back — right now.**
+      content: `Namaste! I'm Rakshak AI — I'll help you file your cyber crime complaint.
 
-You can file your complaint in under 2 minutes. Let's get started.
-
-Here is what I can do:
-• 📸 Analyze your UPI/banking screenshot to extract transaction details automatically
-• 📄 Read your PDF bank statement or payment receipt
-• ⚡ File an emergency complaint if fraud happened in the last 2 hours (Golden Hour)
-• ☑️ Track your complaint status with a reference number
-• 🛒 Guide you for e-commerce or consumer disputes
-
-**Upload a transaction screenshot or payment document and I will read it immediately.** If you prefer, type these details: transaction ID/UTR, amount lost, recipient UPI ID, mobile number or bank account, and payment method (UPI, IMPS, RTGS, NEFT, debit card, or credit card).`,
+What happened? You can type it out, click the mic icon to speak, and upload any supporting documents. I'll go through it and work with you on the next steps.`,
       timestamp: new Date(),
     },
   ])
@@ -281,15 +278,27 @@ Here is what I can do:
         credentials: 'include',
       })
 
-      const data = await response.json()
+      const rawBody = await response.text()
+      let data: { message?: unknown; metadata?: Message['metadata'] } = {}
+      try {
+        data = rawBody ? JSON.parse(rawBody) : {}
+      } catch {
+        // Empty or non-JSON body (e.g. function timeout, upload too large, proxy error)
+        data = {}
+      }
 
-      if (!response.ok) {
+      if (!response.ok || !rawBody) {
         setMessages((prev) => [
           ...prev,
           {
             id: uuidv4(),
             role: 'assistant',
-            content: String(data.message || 'I could not analyze the upload. Please try again or call 1930 for urgent fraud.'),
+            content: String(
+              data.message ||
+                (!rawBody
+                  ? 'That took too long to process and the connection dropped. Please try sending your message again, or call **1930** (National Cyber Helpline, 24x7 and free) for urgent fraud.'
+                  : 'I could not analyze the upload. Please try again or call **1930** for urgent fraud.')
+            ),
             timestamp: new Date(),
           },
         ])

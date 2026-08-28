@@ -1,14 +1,16 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { TopStrip } from '@/app/components/GovHeader'
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next')
+  const destination = next ? `/booting?next=${encodeURIComponent(next)}` : '/'
   const [loginMode, setLoginMode] = useState<'username' | 'mobile'>('mobile')
-  const [imgOk, setImgOk] = useState(true)
+  const [imgOk, setImgOk] = useState(false)
 
   // Username/Password mode
   const [username, setUsername] = useState('')
@@ -51,7 +53,7 @@ export default function LoginPage() {
       }
 
       setIsLoading(false)
-      router.push('/')
+      router.push(destination)
     } catch (err) {
       setError('Network error. Please try again.')
       setIsLoading(false)
@@ -118,7 +120,7 @@ export default function LoginPage() {
       }
 
       setIsLoading(false)
-      router.push('/')
+      router.push(destination)
     } catch (err) {
       setError('Network error. Please try again.')
       setIsLoading(false)
@@ -139,7 +141,7 @@ export default function LoginPage() {
         })
 
         if (res.ok) {
-          router.push('/')
+          router.push(destination)
         }
       } catch (err) {
         setError('Login failed')
@@ -161,7 +163,8 @@ export default function LoginPage() {
           {/* Header */}
           <div className="text-center mb-8">
             {imgOk ? (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src="/images/emblem-india.png"
                 alt="Emblem of India"
                 width={64}
@@ -381,5 +384,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   )
 }

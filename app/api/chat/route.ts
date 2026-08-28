@@ -9,9 +9,13 @@ import { runFallback } from '@/lib/agents/fallback'
 
 export const maxDuration = 60 // Vercel function timeout (seconds)
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-})
+function getOpenAI() {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw Object.assign(new Error('OPENAI_API_KEY is not configured'), { status: 401 })
+  }
+  return new OpenAI({ apiKey })
+}
 
 type ExtractedDetails = NonNullable<Awaited<ReturnType<typeof runIDA>>['extracted']>
 
@@ -64,6 +68,7 @@ function formatTimeAgo(minutes: number | null | undefined): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const openai = getOpenAI()
     const formData = await req.formData()
     const message = (formData.get('message') as string) || ''
     const sessionId = (formData.get('sessionId') as string) || ''
