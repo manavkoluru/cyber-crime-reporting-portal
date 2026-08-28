@@ -1,307 +1,271 @@
-# 🛡️ Cyber Crime Reporting Portal – AI-Powered Fraud Response
+# Rakshak AI — a faster way to report cyber fraud
 
-> National Cyber Crime Reporting Platform with integrated AI-powered real-time fraud incident response for India.
-> Built for the **Golden Hour** – the critical 2-hour window when funds can still be frozen.
-
----
-
-## 🚀 Features
-
-- **🤖 5-Agent AI Orchestration**: Intent Discovery → Router → File Complaint / Retrieval / Fallback
-- **📸 Multimodal Input**: Upload UPI screenshots, PDF bank statements, or type freely
-- **⚡ Golden Hour Detection**: Automatic urgency when fraud < 2 hours old
-- **📋 Instant Complaint Filing**: Auto-generates Cyber Crime Number (CCN)
-- **☑️ Status Retrieval**: Check complaint status with OTP verification
-- **🌐 Hindi/English Bilingual**: Natural language in either language
-- **🔒 Encrypted & Confidential**: End-to-end protection for sensitive data
+> A conversational rebuild of India's cyber-fraud reporting journey. Instead of a
+> 40-minute government form, a citizen describes what happened in their own words —
+> in Hindi, English or a mix — uploads a screenshot, and gets an official complaint
+> number in under two minutes, with the case auto-routed to the right cyber-police
+> jurisdiction.
+>
+> **Built with an OpenAI model (GPT‑4o) at the core of the citizen journey, and with
+> Codex as the primary way the project was written.**
 
 ---
 
-## 🎯 What You Can Do
+## 1. The problem I picked
 
-| Action | How It Works |
-|--------|-------------|
-| 🚨 **Report UPI Fraud** | Upload screenshot or describe the transaction. AI extracts transaction ID, amount, receiver VPA, time. Files complaint instantly if all details present. |
-| 📄 **Analyze Bank Statement** | Upload PDF or image. Extracts any visible transaction/payment information. |
-| ⚡ **Golden Hour Alert** | If fraud < 2 hours old: Flags as URGENT, guides immediate complaint filing. Funds may still be freezable! |
-| 🎫 **Instant CCN** | Generate Cyber Crime Number automatically: CCN-2026-XXXXXX |
-| ☑️ **Track Complaint** | Ask "Check my complaint status" → OTP verification → View all filed complaints with real status updates |
-| 🛒 **Consumer Disputes** | Guide for e-commerce, defective products, non-delivery → Consumer Protection Act resources |
-| 📞 **24x7 Human Support** | Connects to National Cyber Helpline: **1930** (free, always available) |
+**The service:** the National Cyber Crime Reporting Portal (`cybercrime.gov.in`) —
+the single official channel for reporting online financial fraud in India, backed by
+the 1930 helpline.
+
+**Who faces it:** anyone who has just lost money to a UPI scam, a vishing call, a
+card charge or a fake seller. Overwhelmingly ordinary people — often panicked, often
+on a phone, often not fluent in legal or banking English.
+
+**Why the current experience is hard — from personal experience and public record:**
+
+| Friction | What it means for a victim mid-panic |
+|---|---|
+| A long, multi-section form (personal details, incident details, suspect details, evidence) | 30–60 minutes of typing when every minute matters. Many abandon it and just call 1930, which is busy. |
+| The form demands structured fields (12-digit UTR, IFSC, exact timestamps, category codes) | The victim has this information — but it's sitting *inside a screenshot they already have*. They're asked to transcribe it by hand. |
+| The citizen must self-classify the fraud ("UPI Fraud" vs "Internet Banking Fraud" vs "Vishing") | Most people can't, so cases get mis-filed and mis-routed. |
+| No sense of urgency in the UI | The **"golden hour"** — the ~2-hour window when the receiving bank can still freeze the money — is invisible. The form treats a 10-minute-old fraud and a 10-day-old fraud identically. |
+| English-first, form-first | Excludes exactly the users who are most targeted. |
+
+**Why financial fraud, and why first:** it is the largest, fastest-growing, and
+most time-sensitive slice of cybercrime reporting in India. **64.8% of all
+registered cybercrime cases in 2022 had fraud as the motive** ([NCRB *Crime in
+India 2022*, via The Print](https://theprint.in/india/24-spike-in-cybercrime-in-india-shows-ncrb-data-fraud-extortion-sexual-exploitation-top-motives/1871498/)); **3.63M financial-fraud
+incidents were reported in 2024** (up from 2.44M in 2023), with **₹22,845 crore
+lost — roughly 3× the 2023 figure** ([MoS Home Affairs, Lok Sabha, Jul 2025, via
+Business Standard](https://www.business-standard.com/india-news/citizens-lost-over-22-845-crore-to-cyber-criminals-in-2024-govt-tells-ls-125072200883_1.html)). And it is the one category where fast reporting
+measurably recovers money — **₹7,000+ crore saved across ~23 lakh complaints**
+through the 1930 / CFCFRMS pipeline ([PIB / News on AIR](https://www.newsonair.gov.in/over-rs-7000-crore-saved-through-citizen-financial-cyber-fraud-reporting-and-management-system/)). Full rationale and
+sources in [TECHNICAL.md §0](TECHNICAL.md).
+
+**The one problem this prototype solves:** *get a correct, routable financial-fraud
+complaint filed in the golden hour, from a phone, in plain language, without a form.*
 
 ---
 
-## 🏗️ Architecture
+## 2. What I built
+
+A complete citizen journey, start to finish:
 
 ```
-User Input (Text / Screenshot / PDF)
-    ↓
-┌─────────────────────────────────┐
-│  Intent Discovery Agent (IDA)   │ ← GPT-4o Vision + NLP
-│ Extracts: UTR, Amount, VPA, etc │   Confidence scoring
-└──────────────┬──────────────────┘
-               ↓
-       ┌───────────────┐
-       │ Router Agent  │ ← Confidence-based decision
-       └───────────────┘
-               ├─────────────────┬──────────────────┬─────────────┐
-               ↓                 ↓                  ↓             ↓
-        ┌───────────┐    ┌──────────┐     ┌──────────┐     ┌─────────┐
-        │   File    │    │Retrieval │     │ Fallback │     │   IDA   │
-        │ Complaint │    │  Agent   │     │  Agent   │     │ (IDA→)  │
-        └─────┬─────┘    └────┬─────┘     └──────────┘     └─────────┘
-              ↓                ↓
-         CCN Generated    Complaint
-                          Status List
+Landing page  →  "Report fraud now"  →  Login (mock OTP or mock account)
+      →  Conversational intake (type / speak / upload screenshot or PDF)
+      →  AI extracts transaction details, classifies the fraud, flags golden-hour urgency
+      →  Asks ONLY for what's still missing, one question at a time
+      →  Plain-language summary  →  citizen confirms  →  complaint filed
+      →  Cyber Crime Number (CCN) issued  →  Track the case with a live status timeline
 ```
+
+Everything a reviewer needs to test is the **citizen** side. A police/admin view
+exists only to make the "your case was routed somewhere real" claim tangible — it is
+not the thing being judged.
+
+### The AI layer — five roles, one OpenAI model
+
+Every turn of the conversation runs through a small orchestrator
+([`app/api/chat/route.ts`](app/api/chat/route.ts)). GPT‑4o does the language work;
+the routing, the law, and the field rules are deterministic code so behaviour is
+predictable and auditable.
+
+| Role | File | What it does |
+|---|---|---|
+| **Intent Discovery (IDA)** | [`lib/agents/ida.ts`](lib/agents/ida.ts) | Reads the message **and any uploaded image/PDF** with GPT‑4o vision. Extracts UTR/transaction ID, amount, recipient VPA/phone/name, sender bank, payment app, and the incident time. Computes minutes-since-fraud from a timestamp visible in the screenshot. Rejects irrelevant attachments (a selfie, a meme) instead of hallucinating details from them. |
+| **Classifier** | [`lib/classification/`](lib/classification/) | Puts the fraud into one of 7 official *Online Financial Fraud* sub-categories (UPI, card, net-banking, vishing, e-wallet, demat, email-takeover), or asks **one** disambiguating question, or falls back cleanly if it isn't financial fraud. The LLM only picks the category — the legal explanation and the required-fields list come from a local, citeable knowledge base ([`legalKB.ts`](lib/classification/legalKB.ts): BNS 2023, IT Act 2000, RBI limited-liability circular, SEBI SCORES, the 1930 process). |
+| **Router** | [`lib/agents/router.ts`](lib/agents/router.ts) | Pure function. Decides: keep gathering info / file the complaint / look up a status / hand to fallback — based on which mandatory fields are present and a confidence score. Marks the case `URGENT` when the golden hour is active. |
+| **File Complaint** | [`lib/agents/fileComplaint.ts`](lib/agents/fileComplaint.ts) | Never re-asks for a field already extracted. Collects the few genuinely missing pieces (phone, pincode, a "what happened" statement in the user's own words), shows a summary, and files **only on explicit confirmation**. Generates the CCN, maps pincode → police jurisdiction, and runs a triage rule ([`freezeDecision.ts`](lib/freezeDecision.ts)) that decides instant-freeze vs escalate vs manual-review from confidence + amount + golden-hour + time-of-day. |
+| **Retrieval** | [`lib/agents/retrieval.ts`](lib/agents/retrieval.ts) | "Check my complaint status" → lists the caller's real filed complaints (keyed to their verified phone) and shows a case detail with a status timeline. Prompt is hard-constrained to never invent a CCN, amount or status. |
+| **Fallback** | [`lib/agents/fallback.ts`](lib/agents/fallback.ts) | Handles confusion warmly, offers four clear choices, and — importantly — surfaces mental-health helplines (iCall, Vandrevala) if the user expresses acute distress. |
+
+### Designed for real Indian users on real phones
+
+- **Conversational, not a form.** Type, tap the mic (browser speech, `en-IN`), or
+  upload. One question at a time.
+- **Hindi / English / Hinglish** accepted throughout — the model is prompted to
+  mirror the user's language.
+- **Screenshots do the data entry.** The single highest-value interaction: paste a
+  GPay/PhonePe/bank screenshot, and the UTR, amount, recipient and timestamp are
+  read out of it. The user confirms rather than transcribes.
+- **Golden-hour urgency is front and centre** — a fraud under 2 hours old is flagged
+  `⚡ GOLDEN HOUR ACTIVE` and the flow is compressed to file as fast as possible.
+- **Mobile-first, light DOM.** Next.js App Router, Tailwind, server-rendered pages,
+  no heavy client libraries. Works on a slow connection.
+- **Empathy by design.** No blame language; distress is met with helpline numbers.
 
 ---
 
-## 🚀 Quick Start (Local Development)
+## 3. Why this version is better
 
-### Prerequisites
-- **Node.js** 18+ (https://nodejs.org)
-- **OpenAI API Key** with GPT-4o access (https://platform.openai.com/api-keys)
+| Current portal | Rakshak AI |
+|---|---|
+| 30–60 min form | **< 2 min** conversation |
+| Transcribe UTR/amount/time by hand | **Extracted from the screenshot** you already have |
+| Citizen must pick the fraud category | **Auto-classified** into the official sub-category, with the applicable law explained in plain words |
+| Golden hour invisible | **Detected and surfaced**; case marked urgent; triage decides freeze vs review |
+| Manual routing, frequent mis-files | **Pincode → jurisdiction** routing at filing time |
+| English-first | **Hindi / English / Hinglish**, voice or text |
+| File and hope | **CCN + live status timeline** you can track |
 
-### 1. Clone & Install
+---
+
+## 4. What works today vs. what is mocked
+
+**Fully working, end to end (real behaviour):**
+
+- The whole citizen journey: landing → login → conversational intake → extraction →
+  classification → golden-hour flagging → summary → confirm → CCN → track.
+- GPT‑4o vision extraction from uploaded images and PDFs.
+- Fraud sub-classification + a citeable legal explanation from the local KB.
+- Deterministic routing, golden-hour detection, and the freeze/escalate/review
+  triage rule.
+- Complaint persistence to disk and per-user status lookup keyed to a verified phone.
+- A police/admin view of routed complaints, with status updates and case notes.
+- Session behaviour typical of a gov portal (idle timeout, logout on refresh/back).
+
+**Deliberately mocked — because production access would be unsafe or unavailable:**
+
+| Mocked | How | Why |
+|---|---|---|
+| **OTP login** | Any 4–6 digit code is accepted; the demo OTP is shown/logged. [`otp/send`](app/api/auth/otp/send/route.ts), [`otp-verify`](app/api/chat/otp-verify/route.ts) | No SMS gateway; no real phone verification in a hackathon. |
+| **Accounts** | Fixed demo users (citizen / police / admin) in an in-memory store. [`lib/store.ts`](lib/store.ts) | No real identity system. |
+| **The complaint filing itself** | Writes to a local JSON file; CCN is generated locally (`CCN-YYYY-NNNNNN`). | The real NCRP has no public write API and must never receive test data. |
+| **Bank account freeze** | The triage *decides* an action and the timeline shows it as "pending a verified bank instruction". No freeze is actually performed or claimed. | Only banks/I4C can do this. The UI is careful never to state a freeze happened. |
+| **Pincode → jurisdiction** | Small hard-coded Bangalore map. | Stand-in for the I4C jurisdiction directory. |
+| **All personal data in demos** | Synthetic names, phones, UTRs, VPAs. No real Aadhaar/PAN/OTP/payment data anywhere. | Per the brief. |
+
+Nothing here touches a live government system, scrapes anything, or uses a private
+API. This is not an official product and uses no government branding to imply
+endorsement.
+
+---
+
+## 5. How it could work safely at scale
+
+- **Extraction & classification as a service.** The IDA + classifier + KB layer is
+  the reusable core. It could sit in front of the *existing* NCRP form as an
+  assist ("we pre-filled these fields from your screenshot — check them"), lowering
+  risk: humans still confirm, the official form still owns submission.
+- **Golden-hour path via I4C rails.** Golden-hour cases route to the existing
+  Citizen Financial Cyber Fraud Reporting workflow and the bank/PSP nodal system —
+  the freeze decision stays with authorised parties; the AI only prioritises and
+  packages the case.
+- **Legal KB governance.** `legalKB.ts` carries `last_verified` dates and a
+  freshness job; entries are paraphrase-plus-citation, never verbatim statute, and
+  reviewable by a legal team before publish.
+- **Deterministic where it matters.** Routing, field requirements, and triage are
+  plain code and unit-tested — the LLM is scoped to language understanding and
+  category choice, so failure modes are inspectable.
+- **PII discipline.** Minimise extraction to what the complaint needs; encrypt at
+  rest; access-controlled DB instead of the demo JSON store; audit every state
+  change (the timeline model already does this).
+
+---
+
+## 6. How I built it — Codex + OpenAI
+
+- **OpenAI model in the product:** GPT‑4o powers every agent —
+  vision extraction from screenshots/PDFs, fraud sub-classification, and all
+  conversational turns ([`lib/agents/*`](lib/agents/), [`lib/classification/classifier.ts`](lib/classification/classifier.ts)),
+  via the `openai` SDK with JSON-mode responses.
+- **Codex as the build method:** the multi-agent orchestration, the classification
+  module (types, KB wiring, field-requirements loader, the deterministic
+  `mapDetailsToChecklist` reshuffle), the golden-hour triage logic, the session
+  guard, and the citizen-facing pages were built through Codex, iteratively —
+  including its offline test suite ([`lib/classification/__manual__/`](lib/classification/__manual__/),
+  `npm run classify:test`, 42 assertions, no network).
+
+---
+
+## 7. Run it locally
+
+**Prerequisites:** Node 18+ and an OpenAI API key with GPT‑4o access.
+
+> This repo pins a build of **Next.js with breaking changes** — see
+> [`AGENTS.md`](AGENTS.md). Follow the guides under `node_modules/next/dist/docs/`
+> before changing framework-level code.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/rakshak-ai.git
-cd rakshak-ai
 npm install
-```
-
-### 2. Configure Environment
-
-```bash
-cp .env.example .env.local
-```
-
-Open `.env.local` and add your OpenAI API key:
-
-```
-OPENAI_API_KEY=sk-...your-key-here...
-```
-
-### 3. Run Locally
-
-```bash
+echo "OPENAI_API_KEY=sk-...your-key..." > .env.local
 npm run dev
+# open http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) – you should see the RakshakAI chat interface.
+**Try the journey:**
 
----
+1. Landing page → **Report fraud now**.
+2. Log in — mock OTP (any 10-digit number, then any 4–6 digit code) **or** a demo
+   account: `victim@example.com` / `Rakshak-Demo-7fK92m`.
+3. In the chat, describe a fraud in your own words and **upload a payment
+   screenshot** (or a PDF statement). Watch the details get extracted.
+4. Answer the one or two follow-up questions, review the summary, confirm.
+5. Copy the **CCN**, then go to **Track Complaint** to see the status timeline.
+6. Optional — the routing is real: log in as `police@bangalore.gov` /
+   `Rakshak-Police-3pR58w` to see the complaint that got routed there.
 
-## 🌐 Deploy to Vercel (Production)
-
-### Step 1: Push to GitHub
+### Classification module, on its own
 
 ```bash
-git init
-git add .
-git commit -m "feat: initial RakshakAI setup"
-git remote add origin https://github.com/YOUR_USERNAME/rakshak-ai.git
-git push -u origin main
+npm run classify:try -- "Rs 8400 debited from ICICI via GPay after I scanned a refund QR"
+npm run classify:try -- "a bank caller made me share an OTP and 25000 vanished"   # -> vishing
+npm run classify:test                                                             # offline suite, no key
 ```
 
-### Step 2: Import on Vercel
+Or over HTTP while `next dev` runs (404 in production):
 
-1. Go to [vercel.com](https://vercel.com) → **Add New Project**
-2. Click **Import Git Repository**
-3. Select your `rakshak-ai` repository
-4. Framework Preset will auto-detect as **Next.js** ✅
-
-### Step 3: Add Environment Variable
-
-In the Vercel project settings:
-1. Go to **Settings → Environment Variables**
-2. Add: `OPENAI_API_KEY` → paste your key
-3. Make sure it applies to **Production**, **Preview**, and **Development**
-
-### Step 4: Deploy
-
-Click **Deploy** – Vercel will build and deploy in ~2 minutes.
-Your URL will be: `https://rakshak-ai-[hash].vercel.app`
-
-### Step 5: Custom Domain (Optional)
-
-In Vercel → **Settings → Domains** → Add your custom domain.
-
----
-
-## 📁 Project Structure
-
-```
-rakshak-ai/
-├── app/
-│   ├── page.tsx              # Chat UI (Next.js client component)
-│   ├── layout.tsx            # Root layout
-│   ├── globals.css           # Tailwind + custom styles
-│   └── api/chat/route.ts     # Orchestration endpoint
-├── lib/agents/
-│   ├── ida.ts                # Intent Discovery (multimodal)
-│   ├── router.ts             # Routing logic
-│   ├── fileComplaint.ts      # Complaint filing + CCN generation
-│   ├── retrieval.ts          # Status lookup
-│   └── fallback.ts           # Guided recovery
-├── package.json
-├── tsconfig.json
-├── tailwind.config.js
-├── next.config.js
-├── vercel.json
-└── README.md
+```bash
+curl -s localhost:3000/api/dev/classify -H 'content-type: application/json' \
+  -d '{"text":"someone charged my credit card twice for a subscription I never took"}' | jq
 ```
 
 ---
 
-## 🔌 API Endpoints
+## 8. Project map
 
-### POST `/api/chat`
-
-Send a message (with optional file) and receive orchestrated agent response.
-
-**Request** (multipart/form-data):
-```json
-{
-  "message": "I transferred 45000 to a wrong UPI and lost it",
-  "sessionId": "uuid",
-  "history": "[{\"role\":\"user\",\"content\":\"...\"}]",
-  "file": <binary image/pdf>
-}
 ```
-
-**Response**:
-```json
-{
-  "message": "Full agent response",
-  "metadata": {
-    "agent": "File Complaint",
-    "priority": "URGENT",
-    "ccn": "CCN-2026-456789",
-    "goldenHour": true,
-    "route": "FILE_COMPLAINT_AGENT"
-  }
-}
+app/
+  page.tsx                     Landing page
+  report-fraud/                "How it works" + entry to the chat
+  login/  booting/             Mock login (OTP + demo accounts)
+  chat/                        The conversational citizen journey
+  track-complaint/             Citizen status view + timeline
+  police/  admin/  dashboard/  Staff views (supporting, not judged)
+  awareness/                   Cyber-safety guidance
+  api/
+    chat/route.ts              Orchestrator: IDA -> classify -> route -> agent
+    chat/otp-verify/           In-chat mock OTP -> session
+    auth/                      Mock login / logout / me / OTP
+    complaints/                Read own history; staff read + update
+    dev/classify/              Dev-only classifier probe (404 in prod)
+lib/
+  agents/                      ida, router, fileComplaint, retrieval, fallback
+  classification/              classifier + legal KB + field requirements + tests
+  freezeDecision.ts            Triage: instant-freeze / escalate / manual-review
+  store.ts                     In-memory + JSON-file demo store, demo users
+  complaintRequirements.ts     Per-category evidence checklist
+data/                          Runtime-written complaint JSON (git-ignored)
 ```
 
 ---
 
-## 🧠 Agent Details
-
-### 1. **Intent Discovery Agent (IDA)**
-- **Role**: First point of contact. Analyzes text, images, PDFs.
-- **Output**: Structured extraction of fraud details + conversational reply.
-- **Model**: GPT-4o (vision-capable)
-- **Confidence Scoring**: Only routes if confident > 55%
-
-**Extracts**:
-- `utr_or_transaction_id` – Transaction reference
-- `amount_stolen` – Amount in INR
-- `destination_vpa_or_account` – Receiver UPI/bank account
-- `payment_platform` – GPay, PhonePe, Paytm, NEFT, etc.
-- `time_since_fraud_minutes` – Minutes since fraud occurred
-- `user_phone` – User's phone number
-- `golden_hour_active` – True if < 120 minutes
-
-### 2. **Router Agent**
-- **Role**: Decides which agent handles the request.
-- **Logic**:
-  - FILE_COMPLAINT_AGENT: Intent=FILE_COMPLAINT + all mandatory fields
-  - RETRIEVAL_AGENT: Intent=CHECK_STATUS
-  - FALLBACK_AGENT: Low confidence or ambiguous
-  - IDA (loop): Need more context
-
-### 3. **File Complaint Agent**
-- **Role**: Files cybercrime complaint instantly.
-- **Process**:
-  1. Check if all 5 mandatory fields present
-  2. If Golden Hour active: Flag URGENT
-  3. Generate CCN: CCN-{YEAR}-{6DIGITS}
-  4. Show summary card + next steps (call 1930, dispute in UPI app, etc.)
-  5. If fields missing: Ask for most critical one only (UTR > amount > VPA)
-
-### 4. **Retrieval Agent**
-- **Role**: Check complaint status securely.
-- **Process**:
-  1. Ask for registered phone number
-  2. Send OTP (simulated – accepts any 4-6 digits)
-  3. Display list of filed complaints
-  4. Show detailed info when user selects a complaint
-
-### 5. **Fallback Agent**
-- **Role**: Handle unclear/ambiguous requests with empathy.
-- **Process**:
-  1. Acknowledge with warmth
-  2. Offer 4 options (Report / Check Status / E-commerce / Call 1930)
-  3. Ask one simple clarifying question
-  4. **Mental Health Check**: If extreme distress → surface iCall (9152987821) + Vandrevala Foundation (1860-2662-345)
-
----
-
-## 🛠️ Configuration Files
-
-### `package.json`
-Includes production dependencies: `next`, `react`, `react-dom`, `openai`, `lucide-react`, `uuid`
-
-### `tsconfig.json`
-Strict TypeScript with path aliases (`@/*`).
-
-### `tailwind.config.js`
-Tailwind v3 with dark mode (bg-gray-950, text-gray-100, etc.)
-
-### `next.config.js`
-Standard Next.js 14 config with SWC minification.
-
-### `vercel.json`
-Vercel-specific: buildCommand, devCommand, installCommand, framework, nodeVersion.
-
----
-
-## 🌍 Emergency Resources
+## 9. Emergency resources referenced in-product
 
 | Resource | Contact |
-|----------|---------|
-| **National Cyber Helpline** | **1930** (24x7, free) |
-| **Cyber Crime Portal** | cybercrime.gov.in |
-| **National Consumer Helpline** | **1800-11-4000** (24x7, free) |
-| **iCall Mental Health** | **9152987821** (free counseling) |
-| **Vandrevala Foundation** | **1860-2662-345** (24x7) |
+|---|---|
+| National Cyber Crime Helpline | **1930** (24×7, free) |
+| National Cyber Crime Reporting Portal | cybercrime.gov.in |
+| National Consumer Helpline | **1800-11-4000** |
+| iCall (mental health) | **9152987821** |
+| Vandrevala Foundation | **1860-2662-345** (24×7) |
 
 ---
 
-## ⚖️ Disclaimer
+## Disclaimer
 
-**RakshakAI is built for educational and hackathon purposes.**
-
-The complaint filing workflow is **simulated** – for a real complaint, visit [cybercrime.gov.in](https://cybercrime.gov.in) or call **1930**.
-
----
-
-## 👨‍💻 Contributing
-
-We welcome contributions! Please:
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Commit: `git commit -m "feat: describe your change"`
-4. Push: `git push origin feature/your-feature`
-5. Open a pull request
-
----
-
-## 📄 License
-
-MIT License – feel free to use, modify, and distribute.
-
----
-
-## ❤️ Built with ❤️ for Safer Digital India
-
-**RakshakAI** is committed to empowering fraud victims and building a safer digital India. Every feature is designed with empathy, speed, and real-world impact.
-
-If you find this helpful, please star ⭐ and share!
-
----
-
-**Last Updated**: August 2026  
-**Maintainer**: RakshakAI Team
+Rakshak AI is a hackathon prototype. It is **not** an official government service and
+is **not** affiliated with or endorsed by any government body. Complaint filing,
+login, OTPs and account freezes are **simulated**. For a real complaint, use
+[cybercrime.gov.in](https://cybercrime.gov.in) or call **1930**.

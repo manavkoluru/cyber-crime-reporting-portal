@@ -3,22 +3,26 @@ import {
   getSession,
   getAllComplaints,
   getComplaintsByJurisdiction,
-  getComplaintsByPhone,
+  getComplaintsForComplainant,
+  getUserById,
   getComplaint,
   updateComplaint,
+  storeReady,
 } from '@/lib/store'
 
 export async function GET(req: NextRequest) {
   try {
-    // Complainants log in via OTP, which stores a JSON "session" cookie holding
-    // their verified phone. Complaints are keyed by that phone, so we return the
-    // caller's own history here.
+    await storeReady // ensure persisted complaints are loaded (Redis on a cold start)
+    // — Complainant via OTP login: `session` cookie carries userId + verified phone.
     const jsonSession = req.cookies.get('session')?.value
     if (jsonSession) {
       try {
         const s = JSON.parse(jsonSession)
-        if (s?.phone) {
-          const complaints = getComplaintsByPhone(s.phone)
+        if (s?.userId || s?.phone) {
+          const complaints = getComplaintsForComplainant(
+            s.userId ? String(s.userId) : undefined,
+            [s.phone]
+          )
           return NextResponse.json({
             success: true,
             complaints,
@@ -30,8 +34,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Staff (police/admin) log in via username/password, which stores an
-    // "auth_session" id cookie backed by the in-memory session store.
+    // — Staff / complainant via username+password: `auth_session` id cookie.
     const sessionId = req.cookies.get('auth_session')?.value
     if (sessionId) {
       const session = getSession(sessionId)
@@ -41,6 +44,11 @@ export async function GET(req: NextRequest) {
           complaints = getComplaintsByJurisdiction(session.jurisdiction || '')
         } else if (session.role === 'ADMIN') {
           complaints = getAllComplaints()
+        } else {
+          // COMPLAINANT logged in with a password: match by user id, and by the
+          // phone on their user record as a fallback.
+          const user = getUserById(session.userId)
+          complaints = getComplaintsForComplainant(session.userId, [user?.phone])
         }
         return NextResponse.json({
           success: true,
@@ -64,6 +72,7 @@ export async function GET(req: NextRequest) {
 // POST: Update complaint status
 export async function POST(req: NextRequest) {
   try {
+    await storeReady
     const sessionId = req.cookies.get('auth_session')?.value
 
     if (!sessionId) {

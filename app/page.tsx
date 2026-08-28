@@ -73,24 +73,19 @@ export default function HomePage() {
       {/* Hero Section */}
       <div className="bg-[#0b3d91] py-16 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <h2 className="text-3xl sm:text-5xl font-bold text-white mb-4">National Cyber Crime Reporting Portal</h2>
+          <h2 className="text-3xl sm:text-5xl font-bold text-white mb-4">You&apos;re in the right place.</h2>
           <p className="text-blue-100 text-lg sm:text-xl max-w-2xl mx-auto mb-8">
-            File your complaint in under 2 minutes. Instant guidance, real-time tracking, available 24/7.
+            Cyber fraud can happen to anyone. We&apos;re here to help you act quickly and recover what&apos;s yours.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex justify-center mb-4">
             <Link
-              href="/chat"
-              className="px-8 py-3 bg-[#FF9933] hover:bg-[#e6862b] text-white font-semibold rounded transition shadow-lg inline-block"
+              href="/report-fraud"
+              className="px-8 py-3 bg-[#FF9933] hover:bg-[#e6862b] text-[#0b3d91] font-semibold rounded transition shadow-lg inline-block"
             >
-              Report Fraud Now
+              Report fraud now
             </Link>
-            <a
-              href="tel:1930"
-              className="px-8 py-3 bg-white hover:bg-gray-100 text-[#0b3d91] font-semibold rounded transition inline-block"
-            >
-              Call 1930 Helpline (24/7)
-            </a>
           </div>
+          <p className="text-blue-200 text-sm">Available 24/7 &middot; Takes under 2 minutes &middot; No forms</p>
         </div>
       </div>
 
@@ -111,34 +106,52 @@ export default function HomePage() {
           ))}
         </div>
 
+        {/* How It Works */}
+        <div className="mb-16">
+          <h3 className="text-3xl font-bold text-gray-800 mb-8 text-center">How it works</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-gray-200 md:divide-y-0 md:divide-x border-t border-b border-gray-200">
+            {[
+              {
+                step: '1',
+                title: 'Tell us what happened',
+                desc: 'Chat or speak with our agent in your own words. Share any screenshots or documents — we extract only the details needed to file your complaint.',
+              },
+              {
+                step: '2',
+                title: 'Your complaint, filed in under 2 minutes',
+                desc: "Powered by GPT-4o, Rakshak AI reads your documents, identifies the fraud type, flags urgency, and routes your case to the right department. Filing time drops from 40+ minutes to under 2.",
+              },
+              {
+                step: '3',
+                title: 'Track, protect, recover',
+                desc: 'Follow your case in real time with updates from your case officer. Reported within the golden hour? Rakshak AI can flag it as urgent, alert your bank to block suspicious transactions, and trigger the recovery process.',
+              },
+            ].map((item, i) => (
+              <div key={i} className="py-8 px-0 md:px-8 first:pl-0 last:pr-0">
+                <div className="text-3xl font-bold text-[#0b3d91] mb-3">{item.step}</div>
+                <h4 className="text-lg font-semibold text-gray-800 mb-2">{item.title}</h4>
+                <p className="text-gray-600">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Features Grid */}
         <div className="mb-16">
           <h3 className="text-3xl font-bold text-gray-800 mb-8 text-center">Why Report Here?</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
-                title: 'Instant Guided Filing',
-                desc: 'We guide you step by step — most complaints filed in under 2 minutes.',
-              },
-              {
-                title: 'Screenshot Analysis',
-                desc: 'Upload your transaction screenshot and we pull out all the details automatically.',
-              },
-              {
-                title: 'Golden Hour Detection',
-                desc: 'Get instant alerts if your fraud is within 2 hours – maximum recovery window.',
-              },
-              {
-                title: 'Mobile Friendly',
-                desc: 'File complaints on any device, anywhere, anytime. No installation needed.',
-              },
-              {
-                title: 'Real-Time Tracking',
-                desc: 'Track your complaint status live and get updates via SMS/call.',
-              },
-              {
                 title: 'Secure & Private',
-                desc: 'Your data is encrypted and handled by government cyber agencies.',
+                desc: 'Your data is encrypted and handled only by government cyber agencies. Rakshak AI never shares your information with anyone else.',
+              },
+              {
+                title: 'Available 24/7',
+                desc: 'No office hours, no queues. Rakshak AI is always on — report the moment it happens, day or night.',
+              },
+              {
+                title: 'Backed by a Real Case Officer',
+                desc: 'Rakshak AI files your complaint instantly, but a human case officer owns and follows through on your case.',
               },
             ].map((feature, i) => (
               <div
@@ -152,44 +165,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* How It Works */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-8 mb-16">
-          <h3 className="text-3xl font-bold text-gray-800 mb-8 text-center">How It Works – 3 Simple Steps</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                step: '1',
-                title: 'Upload Screenshot',
-                desc: 'Share a screenshot of your transaction or fraud. We read it and pull out the details instantly.',
-              },
-              {
-                step: '2',
-                title: 'Answer Questions',
-                desc: 'Provide any missing details. Our assistant asks only what\'s necessary.',
-              },
-              {
-                step: '3',
-                title: 'Get CCN',
-                desc: 'Receive your Cyber Crime Number (CCN) instantly. Track your case anytime.',
-              },
-            ].map((item, i) => (
-              <div key={i} className="relative">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0">
-                    <div className="flex items-center justify-center h-12 w-12 rounded-full bg-[#0b3d91] text-white font-bold text-lg">
-                      {item.step}
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-2">{item.title}</h4>
-                    <p className="text-gray-600">{item.desc}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* CTA Section */}
         <div className="bg-[#fff4e5] border border-[#FF9933]/40 rounded-lg p-8 text-center mb-16">
           <h3 className="text-3xl font-bold text-gray-800 mb-4">Lost Money to Cyber Fraud?</h3>
@@ -197,7 +172,7 @@ export default function HomePage() {
             File a complaint right now. The sooner you report, the higher the chances of recovery. Every minute counts.
           </p>
           <Link
-            href="/chat"
+            href="/report-fraud"
             className="px-8 py-4 bg-[#0b3d91] hover:bg-[#0a3480] text-white font-semibold rounded transition shadow-lg inline-block text-lg"
           >
             File Your Complaint Now
@@ -237,7 +212,7 @@ export default function HomePage() {
         {/* CTAs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
           <Link
-            href="/chat"
+            href="/report-fraud"
             className="bg-[#0b3d91] hover:bg-[#0a3480] rounded-lg p-6 text-center transition group"
           >
             <h4 className="text-lg font-semibold text-white mb-2">File a Complaint</h4>

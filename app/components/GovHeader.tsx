@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { Facebook, Instagram, Linkedin, Send, Twitter, Youtube } from 'lucide-react'
@@ -47,8 +46,8 @@ export function TopStrip() {
 }
 
 const NAV_LINKS = [
-  { label: 'Home', href: '/dashboard' },
-  { label: 'Report Fraud', href: '/chat' },
+  { label: 'Home', href: '/' },
+  { label: 'Report Fraud', href: '/report-fraud' },
   { label: 'Track your Complaint', href: '/track-complaint' },
   { label: 'Awareness', href: '/awareness' },
 ]
@@ -62,16 +61,17 @@ export function GovHeader({
   subtitle?: string
   rightSlot?: React.ReactNode
 }) {
-  const [imgOk, setImgOk] = useState(true)
+  const [imgOk, setImgOk] = useState(false)
 
   return (
     <>
       <TopStrip />
       <div className="w-full bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
-          <Link href="/dashboard" className="flex items-center gap-3 min-w-0">
+          <Link href="/" className="flex items-center gap-3 min-w-0">
             {imgOk ? (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src="/images/emblem-india.png"
                 alt="Emblem of India"
                 width={48}
@@ -127,8 +127,8 @@ export function GovFooter() {
           <div>
             <h4 className="font-semibold text-white mb-3">Quick Links</h4>
             <ul className="space-y-2 text-blue-100">
-              <li><Link href="/dashboard" className="hover:text-white hover:underline">Home</Link></li>
-              <li><Link href="/chat" className="hover:text-white hover:underline">Report Fraud</Link></li>
+              <li><Link href="/" className="hover:text-white hover:underline">Home</Link></li>
+              <li><Link href="/report-fraud" className="hover:text-white hover:underline">Report Fraud</Link></li>
               <li><Link href="/track-complaint" className="hover:text-white hover:underline">Track Complaint</Link></li>
             </ul>
           </div>

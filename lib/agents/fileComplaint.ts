@@ -6,6 +6,13 @@ import { decideFreezeAction } from '@/lib/freezeDecision'
 import { formatTimeAgo } from '@/lib/utils'
 import { v4 as uuidv4 } from 'uuid'
 
+/**
+ * The dedicated "tell me what happened in your own words" question always contains
+ * this exact phrase. `route.ts` reuses it to detect the narrative-reply turn so the
+ * two agree. See the NARRATIVE task instruction below.
+ */
+export const NARRATIVE_SENTINEL = 'in your own words, in a couple of sentences'
+
 const FILE_COMPLAINT_SYSTEM_PROMPT = `You are the File Complaint Agent of the Cyber Crime Reporting Portal.
 Your mission: Help fraud victims file a cybercrime complaint as FAST as possible.
 
@@ -63,6 +70,7 @@ Priority: Phone > Location > Narrative > OTP Verification
 
 ## Output Format
 Plain text only. No JSON, no code blocks.
+Never use em dashes or en dashes (— or –). Use a comma, a period, or parentheses instead.
 `
 
 export async function runFileComplaint(
@@ -75,7 +83,12 @@ export async function runFileComplaint(
   fileBase64?: string | null,
   fileMediaType?: string | null,
   previousExtracted?: IDARaw['extracted'],
-  phoneFromSession?: string | null // Phone number from OTP login session
+  phoneFromSession?: string | null, // Phone number from OTP login session (may be null for user/pass login)
+  isAuthenticatedSession?: boolean, // True if the user is logged in via EITHER auth system
+  classificationPreamble?: string, // Compact "filing this as X under BNS/IT Act ..." line — prepend to this reply
+  classification?: Record<string, unknown>, // Cached classifier result; carried forward in extractedState
+  blockFiling?: boolean, // Hard stop: caller says this turn must NOT result in a filed complaint
+  complainantUserId?: string | null // Logged-in complainant's user id; stamped on the filed complaint
 ): Promise<{ message: string; metadata: Record<string, unknown> }> {
   // Merge previous extracted data with current (current takes precedence)
   let ext = { ...previousExtracted, ...idaResult.extracted }
@@ -86,19 +99,43 @@ export async function runFileComplaint(
     console.log(`[FileComplaint] Pre-filled phone from OTP session: ${phoneFromSession}`)
   }
 
-  // Check if user is authenticated (has phone from session)
-  const isUserAuthenticated = !!phoneFromSession
+  // A logged-in user is authenticated regardless of which login system they used.
+  // OTP verification is only for anonymous users proving ownership of a phone number.
+  const isUserAuthenticated = !!isAuthenticatedSession || !!phoneFromSession
+
+  // The victim must give the "what happened" statement in their own words as a direct
+  // reply to the DEDICATED narrative question. A narrative that IDA merely scraped from
+  // an earlier message or an image caption does NOT count until confirmed in this step.
+  //
+  // The dedicated question always contains this exact sentinel phrase (see the NARRATIVE
+  // TASK instruction below). We match on the sentinel only — NOT loose phrases like
+  // "what happened", which also appear in the greeting and the modify prompt and were
+  // previously causing this whole step to be skipped from turn 1.
+  const prevNarrativeConfirmed = !!(previousExtracted as any)?.narrative_confirmed
+  const lastAssistantMsg = [...history].reverse().find((m) => m.role === 'assistant')
+  const justAskedForNarrative =
+    !!lastAssistantMsg && lastAssistantMsg.content.toLowerCase().includes(NARRATIVE_SENTINEL)
+  const userJustAnsweredNarrative =
+    justAskedForNarrative && message.trim().split(/\s+/).length >= 4
+  const narrativeConfirmed = prevNarrativeConfirmed || userJustAnsweredNarrative
+
+  // If the user just gave their statement, capture it verbatim as the narrative.
+  if (userJustAnsweredNarrative && message.trim().length > (ext.fraud_narrative?.length || 0)) {
+    ext = { ...ext, fraud_narrative: message.trim() }
+  }
 
   // Check if we have all mandatory fields to file
   const hasDestinationInfo = !!(ext.destination_vpa_or_account || ext.recipient_phone || ext.recipient_name)
+  const hasIncidentTime = typeof ext.time_since_fraud_minutes === 'number'
   const canFile = !!(
     ext.utr_or_transaction_id &&
     ext.amount_stolen &&
     hasDestinationInfo &&
-    ext.time_since_fraud_minutes !== null &&
+    hasIncidentTime &&
     ext.user_phone &&
     userLocation &&
     ext.fraud_narrative &&
+    narrativeConfirmed &&
     isUserAuthenticated // Can only file if authenticated or OTP verified
   )
 
@@ -125,11 +162,13 @@ export async function runFileComplaint(
   // Only ask for VPA_ACCOUNT if we don't have ANY destination info (VPA, phone, or name)
   if (!hasDestinationInfo) missingFields.push('VPA_ACCOUNT')
   if (!userLocation) missingFields.push('LOCATION')
-  if (!ext.fraud_narrative) missingFields.push('NARRATIVE')
   // Only ask for phone if not already provided AND not already asked in this conversation
   if (!ext.user_phone && !recentConversation.includes('phone number')) {
     missingFields.push('PHONE')
   }
+  // Narrative is ALWAYS asked explicitly (last), even if IDA pre-filled fraud_narrative,
+  // until the user has answered the "what happened" question in their own words.
+  if (!narrativeConfirmed) missingFields.push('NARRATIVE')
 
   const fieldPriority = {
     UTR_TRANSACTION_ID: 1,
@@ -157,9 +196,18 @@ export async function runFileComplaint(
     ? '✓ ALL FIELDS COLLECTED - Ready to file'
     : `⚠️ Missing ${missingFields.length} field(s) in priority order:\n${missingFields.map((f, i) => `   ${i + 1}. ${missingFieldLabels[f as keyof typeof missingFieldLabels]}`).join('\n')}`
 
+  // These fields can be auto-extracted from an uploaded screenshot/PDF, so remind the
+  // user they can upload instead of typing. Phone/location/narrative cannot, so no hint.
+  const docExtractableFields = ['UTR_TRANSACTION_ID', 'AMOUNT', 'VPA_ACCOUNT']
+  const uploadHint = docExtractableFields.includes(nextMissingField as string)
+    ? ' End with exactly this sentence on its own line: "You can also upload documents or images, and I will auto-extract required data."'
+    : ''
+
   const nextTaskInstructions = missingFields.length === 0
-    ? 'TASK: Show summary of complaint details. Ask for confirmation: "Should I file your complaint with these details?" Do NOT ask for additional fields.'
-    : `TASK: Ask for the FIRST missing field ONLY: ${missingFieldLabels[nextMissingField as keyof typeof missingFieldLabels]}. Do NOT ask for multiple fields.`
+    ? 'TASK: Show a brief, friendly summary of the complaint details you have, then ask "Are you ready to file this complaint?". The UI shows the user Yes / No / Modify buttons, so do NOT write out a list of reply options or ask them to type yes/no. Do NOT ask for additional fields.'
+    : nextMissingField === 'NARRATIVE'
+      ? `TASK: Everything else is collected. Now ask the user to describe how the fraud unfolded, in their own words, in a couple of sentences. Reassure them you will use it to make sure the report is handled quickly and correctly (do NOT call it a "statement for the official record" or anything that sounds legal or scary). Your message MUST contain this exact phrase verbatim: "${NARRATIVE_SENTINEL}". Ask ONLY this. Do NOT summarise or offer to file yet.`
+      : `TASK: Ask for the FIRST missing field ONLY: ${missingFieldLabels[nextMissingField as keyof typeof missingFieldLabels]}. Do NOT ask for multiple fields. Do NOT offer to file yet - a narrative statement is still needed after this.${uploadHint}`
 
   const authenticatedNextStep = nextMissingField
     ? `Your account is already verified. Please provide: ${missingFieldLabels[nextMissingField as keyof typeof missingFieldLabels]}.`
@@ -251,6 +299,78 @@ Now I need a few more details to file your complaint:
 `
   }
 
+  // — FIRST substantive File-Complaint turn: skip the LLM. Emit a short deterministic
+  //   opener (classification + "here's what I need") and let the checklist UI carry the
+  //   asks. No specific field question. Applies only when nothing has been collected yet
+  //   AND no image was just processed AND we have not opened this flow before.
+  const alreadyOpened = history.some(
+    (m) => m.role === 'assistant' && /I'm filing this report as|here'?s what I need/i.test(m.content)
+  )
+  // "Nothing collected" = no transaction facts yet and the user has not answered the
+  // dedicated narrative step. (IDA auto-fills `fraud_narrative` from the very first
+  // message, so we deliberately do NOT check it here.)
+  const nothingCollectedYet =
+    !ext.utr_or_transaction_id &&
+    !ext.amount_stolen &&
+    typeof ext.time_since_fraud_minutes !== 'number' &&
+    !hasDestinationInfo &&
+    !userLocation &&
+    !ext.user_phone &&
+    !narrativeConfirmed
+  if (!alreadyOpened && nothingCollectedYet && !summaryResponse) {
+    // "This is typically dealt with under [law links]." — reuse the classifier's
+    // preamble sentence, minus its own "I'm recording this as X" lead (we replace it).
+    const lawSentence =
+      classificationPreamble?.replace(/^.*?category\.\s*/i, '').trim() || ''
+    const classLabel =
+      classificationPreamble?.match(/recording this as \*\*([^*]+)\*\*/i)?.[1] ||
+      (classification?.subCategory as string | undefined) ||
+      'an online financial fraud'
+
+    // Short echo of what the user said, for "Since you mentioned ...".
+    const raw = message
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/[.?!]+$/, '')
+      .replace(/\s*,?\s*(and\s+)?(i\s+)?want(ed)?\s+to\s+(report|file).*$/i, '') // drop "...and want to report it"
+      .replace(/^(i(\s+(was|am|'?ve|have|had|got|just))?|someone|there\s+was|my)\s+/i, '') // drop leading subject
+      .trim()
+    const hint =
+      raw.length >= 4 && raw.length <= 120 ? raw.toLowerCase() : 'an online payment fraud'
+
+    const opener =
+      `Got it. Let's move quickly. Since you mentioned ${hint}, I'm filing this report as ` +
+      `**${classLabel}**, under the "Online Financial Fraud" category.` +
+      (lawSentence ? ` ${lawSentence}` : '') +
+      `\n\nHere's what I need from you:\n\n` +
+      `You can also upload documents or images, and I will auto-extract required data.`
+
+    return {
+      message: opener,
+      metadata: {
+        agent: 'File Complaint',
+        priority: route.priority,
+        userAuthenticated: isUserAuthenticated,
+        extractedState: {
+          utr_or_transaction_id: ext.utr_or_transaction_id,
+          phonepe_transaction_id: ext.phonepe_transaction_id,
+          amount_stolen: ext.amount_stolen,
+          destination_vpa_or_account: ext.destination_vpa_or_account,
+          recipient_name: ext.recipient_name,
+          recipient_phone: ext.recipient_phone,
+          fraud_narrative: ext.fraud_narrative,
+          payment_platform: ext.payment_platform,
+          time_since_fraud_minutes: ext.time_since_fraud_minutes,
+          user_phone: ext.user_phone,
+          user_location: userLocation,
+          golden_hour_active: ext.golden_hour_active,
+          narrative_confirmed: narrativeConfirmed,
+          classification,
+        },
+      },
+    }
+  }
+
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -266,17 +386,99 @@ Now I need a few more details to file your complaint:
       max_tokens: 800,
     })
 
-    const responseText = response.choices[0].message.content || 'Please try again.'
+    // Belt-and-braces: replace any em/en dash the model still emits with a comma.
+    const dedash = (s: string) =>
+      s.replace(/\s+[—–]\s+/g, ', ').replace(/[—–]/g, ', ').replace(/,\s*,/g, ',')
+    const responseText = dedash(response.choices[0].message.content || 'Please try again.')
     const asksForOtp = /\botp\b|verification code|4\s*[-–]\s*6\s*digit|enter.*code/i.test(responseText)
     // Guard against an LLM re-asking for a credential that the session has already verified.
-    const safeResponseText = isUserAuthenticated && asksForOtp ? authenticatedNextStep : responseText
+    let safeResponseText = isUserAuthenticated && asksForOtp ? authenticatedNextStep : responseText
 
-    // Prepend summary if image was processed
-    const finalResponse = summaryResponse ? summaryResponse + safeResponseText : safeResponseText
+    // The narrative step is load-bearing: if the model forgot the sentinel phrase, the
+    // next turn wouldn't recognise the user's reply as the statement. Force a clean ask.
+    if (nextMissingField === 'NARRATIVE' && !responseText.toLowerCase().includes(NARRATIVE_SENTINEL)) {
+      safeResponseText = `We have everything else on file. Now, ${NARRATIVE_SENTINEL}, please describe how the fraud unfolded. I will use this information to ensure that we are acting quickly and correctly.`
+    }
 
-    // Check if user confirmed filing (look for affirmative responses)
-    const userConfirmedFiling = /\b(yes|sure|go ahead|proceed|file|submit|confirm)\b/i.test(message)
-    const isFilingComplaint = userConfirmedFiling && canFile && userLocation
+    // — Confirmation-step intent detection (only meaningful once every field is collected).
+    //   CONSENT MUST BE UNAMBIGUOUS. A message that merely contains the word "file"
+    //   or "go ahead" inside a larger sentence about something else is NOT consent.
+    const msgLower = message.toLowerCase().trim()
+    const msgWords = msgLower.split(/\s+/).length
+
+    // Explicit affirmative: the WHOLE message is a short yes ("yes", "yes file it",
+    // "go ahead", "please file it", "confirm", "yes please"). Not a clause buried in prose.
+    const userConfirmedFiling =
+      /^(yes|yep|yeah|yes please|ok|okay|sure|go ahead|please go ahead|proceed|please proceed|file it|please file it|yes file it|yes, file it\.?|submit|confirm|confirmed|do it|go for it)[.! ]*$/.test(
+        msgLower
+      ) && msgWords <= 5
+
+    // Explicit decline: short and clearly negative.
+    const userDeclinedFiling =
+      !userConfirmedFiling &&
+      /^(no|nope|not now|don'?t file|do not file|cancel|stop|hold on|wait|not yet)[.! ]*$/.test(
+        msgLower
+      )
+
+    // Modify: short and clearly asking to change a field.
+    const userWantsModify =
+      !userConfirmedFiling &&
+      !userDeclinedFiling &&
+      msgWords <= 12 &&
+      /\b(modify|change|edit|correct|update|fix|amend)\b/.test(msgLower)
+
+    // Modify loop: user wants to change something before filing.
+    if (canFile && userWantsModify) {
+      return {
+        message:
+          "No problem. Let's fix that before filing.\n\n**What would you like to modify?** Tell me which detail is wrong (for example: amount, transaction ID, phone number, location, or your description of what happened) and what it should be.",
+        metadata: {
+          agent: 'File Complaint',
+          priority: route.priority,
+          userAuthenticated: isUserAuthenticated,
+          awaitingModification: true,
+          extractedState: {
+            utr_or_transaction_id: ext.utr_or_transaction_id,
+            phonepe_transaction_id: ext.phonepe_transaction_id,
+            amount_stolen: ext.amount_stolen,
+            destination_vpa_or_account: ext.destination_vpa_or_account,
+            recipient_name: ext.recipient_name,
+            recipient_phone: ext.recipient_phone,
+            fraud_narrative: ext.fraud_narrative,
+            payment_platform: ext.payment_platform,
+            time_since_fraud_minutes: ext.time_since_fraud_minutes,
+            user_phone: ext.user_phone,
+            user_location: userLocation,
+            golden_hour_active: ext.golden_hour_active,
+            narrative_confirmed: narrativeConfirmed,
+            classification,
+          },
+        },
+      }
+    }
+
+    // User explicitly declined to file.
+    if (canFile && userDeclinedFiling) {
+      safeResponseText =
+        "That's completely okay. I have not filed anything, and I won't until you tell me you're ready. Your details are saved safely.\n\nTake the time you need. Whatever you decide, you have not done anything wrong here, and I'm always here whenever you want to continue, change a detail, or just talk it through. When you're ready, say \"file it\"."
+    }
+
+    // Prepend, in order: the classification preamble (first turn / re-classified only),
+    // then the image summary, then the agent's reply.
+    const alreadyPreambled = history
+      .slice(-6)
+      .some(
+        (m) =>
+          m.role === 'assistant' &&
+          /I'm (recording|filing) this (as|report as) \*\*/.test(m.content)
+      )
+    const preamble =
+      classificationPreamble && !alreadyPreambled ? `${classificationPreamble}\n\n` : ''
+    const finalResponse = preamble + (summaryResponse ? summaryResponse + safeResponseText : safeResponseText)
+
+    // Filing requires: a clean explicit "yes", all fields, a location, AND the caller
+    // did not veto filing this turn (e.g. an overlap / danger signal was present).
+    const isFilingComplaint = userConfirmedFiling && canFile && !!userLocation && !blockFiling
 
     // If filing, save complaint to in-memory store
     let savedComplaintId = ''
@@ -347,6 +549,7 @@ Now I need a few more details to file your complaint:
           id: complaintId,
           ccn: ccn!,
           complainantPhone: ext.user_phone!,
+          complainantUserId: complainantUserId || undefined,
           complainantName: '',
           complainantLocation: userLocation,
           fraudNarrative: ext.fraud_narrative || '',
@@ -417,6 +620,17 @@ Now I need a few more details to file your complaint:
     const userJustProvidedPhone = ext.user_phone && !isUserAuthenticated && message.toLowerCase().match(/\d{10}/)
     const needsOTPVerification = userJustProvidedPhone
 
+    // Offer the confirm / decline / modify buttons whenever every field is collected
+    // and we are NOT in the middle of actually filing.
+    const confirmActions =
+      canFile && !isFilingComplaint
+        ? [
+            { label: 'Yes, file it', value: 'Yes, file it.' },
+            { label: "No, don't file it", value: "No, don't file it." },
+            { label: 'Wait, I need to modify some details', value: 'Wait, I need to modify some details before filing.' },
+          ]
+        : undefined
+
     return {
       message: isFilingComplaint ? fileSuccessResponse : finalResponse,
       metadata: {
@@ -426,6 +640,7 @@ Now I need a few more details to file your complaint:
         goldenHour: ext.golden_hour_active,
         complaintId: isFilingComplaint ? savedComplaintId : undefined,
         trackComplaint: isFilingComplaint,
+        confirmActions,
         // OTP flow metadata
         requiresOTP: needsOTPVerification,
         otpPhone: needsOTPVerification ? ext.user_phone : undefined,
@@ -444,6 +659,8 @@ Now I need a few more details to file your complaint:
           user_phone: ext.user_phone,
           user_location: userLocation,
           golden_hour_active: ext.golden_hour_active,
+          narrative_confirmed: narrativeConfirmed,
+          classification,
         },
       },
     }

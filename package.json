@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "classify:try": "node --env-file=.env.local ./node_modules/.bin/tsx lib/classification/__manual__/try.ts",
+    "classify:test": "node --test --import tsx lib/classification/__manual__/*.test.ts"
   },
   "dependencies": {
+    "@upstash/redis": "^1.38.3",
     "clsx": "^2.1.1",
     "lucide-react": "^0.379.0",
     "next": "^16.3.2",
@@ -25,6 +28,7 @@
     "autoprefixer": "^10.0.1",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   }
 }
