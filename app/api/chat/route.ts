@@ -83,8 +83,22 @@ function formatTimeAgo(minutes: number | null | undefined): string {
   return `${years} year${years > 1 ? 's' : ''} ago`
 }
 
-export async function POST(req: NextRequest) {
+type ChatResult = {
+  status: number
+  message: string
+  metadata: Record<string, unknown>
+}
+
+type ProgressReporter = (message: string) => void
+type DeltaReporter = (text: string) => void
+
+async function processChat(
+  req: NextRequest,
+  reportProgress: ProgressReporter,
+  reportDelta: DeltaReporter
+): Promise<ChatResult> {
   try {
+    reportProgress('Preparing your secure report…')
     await storeReady // don't file on top of an un-loaded complaint set
     const openai = getOpenAI()
     const formData = await req.formData()
@@ -158,6 +172,7 @@ export async function POST(req: NextRequest) {
     }
 
     // — Step 1: Intent Discovery Agent (always first)
+    reportProgress(file ? 'Reading the uploaded evidence…' : 'Analyzing your report…')
     const idaResult = await runIDA(
       openai,
       message || fileDescription,
@@ -265,6 +280,7 @@ export async function POST(req: NextRequest) {
         // wrongly block a legitimate confirmation.
         try {
           if (isBareConfirmAnswer) throw { __skip: true }
+          reportProgress('Checking the report category and safety details…')
           const c = await runClassifier(openai, {
             text: [message, mergedExtracted.fraud_narrative].filter(Boolean).join('\n\n'),
             knownDetails: mergedExtracted,
@@ -431,15 +447,18 @@ export async function POST(req: NextRequest) {
         // appeared, or where we reclassified. (A previously-acknowledged overlap does
         // NOT block, the user can still choose to file the financial part.)
         const blockFiling = hasNewOverlapNow || !!reclassified
-        agentResponse = await runFileComplaint(openai, message, history, idaResult, route, resolvedLocation, fileBase64, fileMediaType, idaResult.extracted, phoneFromSession, isAuthenticated, classificationPreamble, classification as Record<string, unknown> | undefined, blockFiling, complainantUserId)
+        reportProgress('Preparing the next safe step…')
+        agentResponse = await runFileComplaint(openai, message, history, idaResult, route, resolvedLocation, fileBase64, fileMediaType, idaResult.extracted, phoneFromSession, isAuthenticated, classificationPreamble, classification as Record<string, unknown> | undefined, blockFiling, complainantUserId, reportDelta)
         break
       }
       case 'RETRIEVAL_AGENT':
         // Pass phone from session so user doesn't need to re-enter it
-        agentResponse = await runRetrieval(openai, message, history, idaResult, phoneFromSession)
+        reportProgress('Looking up your complaint details…')
+        agentResponse = await runRetrieval(openai, message, history, idaResult, phoneFromSession, reportDelta)
         break
       case 'FALLBACK_AGENT':
-        agentResponse = await runFallback(openai, message, history, idaResult)
+        reportProgress('Preparing a response…')
+        agentResponse = await runFallback(openai, message, history, idaResult, reportDelta)
         break
       default:
         // IDA handled it – surface the conversational reply
@@ -449,7 +468,8 @@ export async function POST(req: NextRequest) {
         }
     }
 
-    return NextResponse.json({
+    return {
+      status: 200,
       message: agentResponse.message,
       metadata: {
         ...agentResponse.metadata,
@@ -467,7 +487,7 @@ export async function POST(req: NextRequest) {
         goldenHour: idaResult.extracted?.golden_hour_active === true,
         route: route.route_to,
       },
-    })
+    }
   } catch (error) {
     console.error('[CCRP] Chat API error:', error)
     const upstreamStatus =
@@ -476,17 +496,67 @@ export async function POST(req: NextRequest) {
         : null
     const isConfigurationError = upstreamStatus === 401 || upstreamStatus === 403
 
-    return NextResponse.json(
-      {
-        message:
-          isConfigurationError
-            ? 'I could not analyze the uploaded file because the secure AI service is not configured correctly. No transaction values were extracted. Please try again after the service configuration is fixed, or call **1930** (National Cyber Helpline, available 24x7 and free) for urgent fraud.'
-            : 'I could not analyze the uploaded file due to a technical issue. No transaction values were extracted. Please try again, or call **1930** (National Cyber Helpline, available 24x7 and free) for urgent fraud.',
-        metadata: {},
-      },
-      { status: isConfigurationError ? 503 : 500 }
-    )
+    return {
+      status: isConfigurationError ? 503 : 500,
+      message:
+            isConfigurationError
+              ? 'I could not analyze the uploaded file because the secure AI service is not configured correctly. No transaction values were extracted. Please try again after the service configuration is fixed, or call **1930** (National Cyber Helpline, available 24x7 and free) for urgent fraud.'
+              : 'I could not analyze the uploaded file due to a technical issue. No transaction values were extracted. Please try again, or call **1930** (National Cyber Helpline, available 24x7 and free) for urgent fraud.',
+      metadata: {},
+    }
   }
+}
+
+function encodeEvent(encoder: TextEncoder, event: string, payload: unknown) {
+  return encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`)
+}
+
+export async function POST(req: NextRequest) {
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (event: string, payload: unknown) => controller.enqueue(encodeEvent(encoder, event, payload))
+      try {
+        send('progress', { message: 'Starting secure analysis…' })
+        let sentLiveText = false
+        const result = await processChat(
+          req,
+          (message) => send('progress', { message }),
+          (text) => {
+            sentLiveText = true
+            send('delta', { text })
+          }
+        )
+
+        // The orchestration agents make safety and filing decisions before text can be
+        // exposed. Once that work is complete, deliver the answer incrementally so the
+        // UI can render it without waiting for one large JSON payload.
+        if (!sentLiveText) {
+          for (const chunk of result.message.match(/\S+\s*/g) ?? []) {
+            send('delta', { text: chunk })
+          }
+        }
+        send('metadata', { metadata: result.metadata, status: result.status })
+        send('done', {})
+      } catch (error) {
+        console.error('[CCRP] Stream setup error:', error)
+        send('error', {
+          message: 'I could not process that safely right now. Please try again, or call **1930** for urgent fraud.',
+        })
+      } finally {
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  })
 }
 
 export async function GET() {

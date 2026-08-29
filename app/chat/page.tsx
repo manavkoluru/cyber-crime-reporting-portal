@@ -61,7 +61,7 @@ const QUICK_ACTIONS = [
   { label: '📞 Call Helpline', text: 'How do I reach the cyber crime helpline?' },
 ]
 
-function TypingIndicator() {
+function TypingIndicator({ message }: { message?: string }) {
   return (
     <div className="flex items-end gap-2">
       <div className="bg-red-600 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">
@@ -73,6 +73,7 @@ function TypingIndicator() {
           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
         </div>
+        {message && <p className="mt-2 text-xs text-gray-400">{message}</p>}
       </div>
     </div>
   )
@@ -310,6 +311,7 @@ Here are a few quick options:`,
     setPendingFileData(null)
   }
   const [isLoading, setIsLoading] = useState(false)
+  const [streamProgress, setStreamProgress] = useState('')
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [showScrollButton, setShowScrollButton] = useState(false)
@@ -363,6 +365,7 @@ Here are a few quick options:`,
     setInput('')
     setUploadedFile(null)
     setIsLoading(true)
+    setStreamProgress('Starting secure analysis…')
 
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
@@ -383,16 +386,10 @@ Here are a few quick options:`,
         credentials: 'include',
       })
 
-      const rawBody = await response.text()
-      let data: { message?: unknown; metadata?: Message['metadata'] } = {}
-      try {
-        data = rawBody ? JSON.parse(rawBody) : {}
-      } catch {
-        // Empty or non-JSON body (e.g. function timeout, upload too large, proxy error)
-        data = {}
-      }
-
-      if (!response.ok || !rawBody) {
+      if (!response.ok || !response.body) {
+        const rawBody = await response.text()
+        let data: { message?: unknown } = {}
+        try { data = rawBody ? JSON.parse(rawBody) : {} } catch { /* Non-JSON failure response */ }
         setMessages((prev) => [
           ...prev,
           {
@@ -410,35 +407,71 @@ Here are a few quick options:`,
         return
       }
 
-      let messageContent = data.message
-      if (typeof messageContent === 'string' && messageContent.startsWith('{')) {
-        try {
-          const parsed = JSON.parse(messageContent)
-          messageContent = parsed.message || messageContent
-        } catch {
-          // Not JSON, use as-is
+      const assistantId = uuidv4()
+      let content = ''
+      let metadata: Message['metadata'] | undefined
+      let streamError = ''
+      const decoder = new TextDecoder()
+      const reader = response.body.getReader()
+      let buffer = ''
+
+      const appendAssistant = () => {
+        setMessages((prev) => {
+          const existing = prev.find((item) => item.id === assistantId)
+          const nextMessage: Message = {
+            id: assistantId,
+            role: 'assistant',
+            content,
+            timestamp: new Date(),
+            metadata,
+          }
+          return existing ? prev.map((item) => item.id === assistantId ? nextMessage : item) : [...prev, nextMessage]
+        })
+      }
+
+      const handleEvent = (block: string) => {
+        const event = block.match(/^event: (.+)$/m)?.[1]
+        const dataLine = block.match(/^data: (.+)$/m)?.[1]
+        if (!event || !dataLine) return
+        let payload: any
+        try { payload = JSON.parse(dataLine) } catch { return }
+        if (event === 'progress') setStreamProgress(payload.message || 'Working…')
+        if (event === 'delta') {
+          content += String(payload.text || '')
+          appendAssistant()
         }
+        if (event === 'metadata') metadata = payload.metadata
+        if (event === 'error') streamError = String(payload.message || 'Something went wrong. Please try again.')
       }
 
-      const assistantMessage: Message = {
-        id: uuidv4(),
-        role: 'assistant',
-        content: String(messageContent),
-        timestamp: new Date(),
-        metadata: data.metadata,
+      while (true) {
+        const { done, value } = await reader.read()
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done })
+        const blocks = buffer.split('\n\n')
+        buffer = blocks.pop() || ''
+        blocks.forEach(handleEvent)
+        if (done) break
       }
 
-      // Check if OTP verification is required
-      if (data.metadata?.requiresOTP && data.metadata?.otpPhone) {
-        setOtpPhone(data.metadata.otpPhone)
-        setPendingMessageAfterOTP(assistantMessage)
-        setShowOTPModal(true)
-        setIsLoading(false)
-        // Don't add message yet - wait for OTP verification
+      if (streamError) {
+        content = streamError
+        appendAssistant()
         return
       }
 
-      setMessages((prev) => [...prev, assistantMessage])
+      const assistantMessage: Message = { id: assistantId, role: 'assistant', content, timestamp: new Date(), metadata }
+      // Check OTP only after the server has finalized its structured metadata.
+      if (metadata?.requiresOTP && metadata?.otpPhone) {
+        setMessages((prev) => prev.filter((item) => item.id !== assistantId))
+        setOtpPhone(metadata.otpPhone)
+        setPendingMessageAfterOTP(assistantMessage)
+        setShowOTPModal(true)
+      } else if (!content) {
+        content = 'I could not complete that response. Please try again, or call **1930** for urgent fraud.'
+        appendAssistant()
+      } else {
+        appendAssistant()
+      }
     } catch (error) {
       console.error('Error:', error)
       setMessages((prev) => [
@@ -452,6 +485,7 @@ Here are a few quick options:`,
       ])
     } finally {
       setIsLoading(false)
+      setStreamProgress('')
     }
   }
 
@@ -706,7 +740,7 @@ Your phone number (+91${verifiedPhone}) has been verified. Redirecting to home..
             showQuickActions={idx === 0 && messages.length === 1}
           />
         ))}
-        {isLoading && <TypingIndicator />}
+        {isLoading && <TypingIndicator message={streamProgress} />}
         <div ref={messagesEndRef} />
       </div>
 

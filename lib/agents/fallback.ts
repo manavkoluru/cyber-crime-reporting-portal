@@ -39,7 +39,8 @@ export async function runFallback(
   openai: OpenAI,
   message: string,
   history: { role: string; content: string }[],
-  idaResult: IDARaw
+  idaResult: IDARaw,
+  onDelta?: (text: string) => void
 ): Promise<{ message: string; metadata: Record<string, unknown> }> {
   const recentHistory = history.slice(-4).map((m) => ({
     role: m.role as 'user' | 'assistant',
@@ -56,9 +57,16 @@ export async function runFallback(
       ],
       temperature: 0.5,
       max_tokens: 500,
+      stream: true,
     })
 
-    const responseText = response.choices[0].message.content || "I'm here. What happened?"
+    let responseText = ''
+    for await (const chunk of response) {
+      const text = chunk.choices[0]?.delta?.content || ''
+      responseText += text
+      if (text) onDelta?.(text)
+    }
+    responseText ||= "I'm here. What happened?"
 
     return {
       message: responseText,
