@@ -88,7 +88,8 @@ export async function runFileComplaint(
   classificationPreamble?: string, // Compact "filing this as X under BNS/IT Act ..." line — prepend to this reply
   classification?: Record<string, unknown>, // Cached classifier result; carried forward in extractedState
   blockFiling?: boolean, // Hard stop: caller says this turn must NOT result in a filed complaint
-  complainantUserId?: string | null // Logged-in complainant's user id; stamped on the filed complaint
+  complainantUserId?: string | null, // Logged-in complainant's user id; stamped on the filed complaint
+  onDelta?: (text: string) => void
 ): Promise<{ message: string; metadata: Record<string, unknown> }> {
   // Merge previous extracted data with current (current takes precedence)
   let ext = { ...previousExtracted, ...idaResult.extracted }
@@ -299,6 +300,25 @@ Now I need a few more details to file your complaint:
 `
   }
 
+  // Never stream a response that can later be replaced by the mandatory narrative
+  // prompt, OTP guard, confirmation workflow, image summary, or filing receipt.
+  // Ordinary one-field collection prompts are safe to render token-by-token.
+  const messageLower = message.toLowerCase().trim()
+  const messageWords = messageLower.split(/\s+/).length
+  const likelyConfirmationAction =
+    canFile &&
+    (messageWords <= 12 &&
+      /^(yes|yep|yeah|yes please|ok|okay|sure|go ahead|please go ahead|proceed|please proceed|file it|please file it|yes file it|yes, file it\.?|submit|confirm|confirmed|do it|go for it|no|nope|not now|don'?t file|do not file|cancel|stop|hold on|wait|not yet)/.test(
+        messageLower
+      ))
+  const shouldStreamModelReply =
+    !!onDelta &&
+    !summaryResponse &&
+    !classificationPreamble &&
+    nextMissingField !== 'NARRATIVE' &&
+    !likelyConfirmationAction &&
+    !(ext.user_phone && !isUserAuthenticated && /\d{10}/.test(message))
+
   // — FIRST substantive File-Complaint turn: skip the LLM. Emit a short deterministic
   //   opener (classification + "here's what I need") and let the checklist UI carry the
   //   asks. No specific field question. Applies only when nothing has been collected yet
@@ -384,12 +404,23 @@ Now I need a few more details to file your complaint:
       ],
       temperature: 0.3,
       max_tokens: 800,
+      stream: shouldStreamModelReply,
     })
 
     // Belt-and-braces: replace any em/en dash the model still emits with a comma.
     const dedash = (s: string) =>
       s.replace(/\s+[—–]\s+/g, ', ').replace(/[—–]/g, ', ').replace(/,\s*,/g, ',')
-    const responseText = dedash(response.choices[0].message.content || 'Please try again.')
+    let rawResponseText = ''
+    if (shouldStreamModelReply) {
+      for await (const chunk of response as AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>) {
+        const text = chunk.choices[0]?.delta?.content || ''
+        rawResponseText += text
+        if (text) onDelta?.(text)
+      }
+    } else {
+      rawResponseText = (response as OpenAI.Chat.Completions.ChatCompletion).choices[0].message.content || ''
+    }
+    const responseText = dedash(rawResponseText || 'Please try again.')
     const asksForOtp = /\botp\b|verification code|4\s*[-–]\s*6\s*digit|enter.*code/i.test(responseText)
     // Guard against an LLM re-asking for a credential that the session has already verified.
     let safeResponseText = isUserAuthenticated && asksForOtp ? authenticatedNextStep : responseText

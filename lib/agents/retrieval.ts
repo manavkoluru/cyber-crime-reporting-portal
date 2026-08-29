@@ -86,7 +86,8 @@ export async function runRetrieval(
   message: string,
   history: { role: string; content: string }[],
   idaResult: IDARaw,
-  phoneFromSession?: string | null // Phone number from OTP login session
+  phoneFromSession?: string | null, // Phone number from OTP login session
+  onDelta?: (text: string) => void
 ): Promise<{ message: string; metadata: Record<string, unknown> }> {
   const recentHistory = history.slice(-8).map((m) => ({
     role: m.role as 'user' | 'assistant',
@@ -116,9 +117,16 @@ export async function runRetrieval(
       ],
       temperature: 0.4,
       max_tokens: 700,
+      stream: true,
     })
 
-    const responseText = response.choices[0].message.content || 'Please try again.'
+    let responseText = ''
+    for await (const chunk of response) {
+      const text = chunk.choices[0]?.delta?.content || ''
+      responseText += text
+      if (text) onDelta?.(text)
+    }
+    responseText ||= 'Please try again.'
 
     return {
       message: responseText,

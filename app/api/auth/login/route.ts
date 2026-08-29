@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { findUserByUsername, createSession } from '@/lib/store'
+import { findUserByUsername } from '@/lib/store'
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,10 +21,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Create session
-    const sessionId = createSession(user.id)
-
-    // Set cookie
+    // Keep the demo login stateless so it works across Vercel serverless instances.
+    // This intentionally matches the existing OTP session shape. Replace this with a
+    // signed session or Redis-backed session before treating this as production auth.
     const response = NextResponse.json({
       success: true,
       user: {
@@ -36,12 +35,24 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    response.cookies.set('auth_session', sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60,
-      path: '/',
-    })
+    response.cookies.set(
+      'session',
+      JSON.stringify({
+        userId: user.id,
+        username: user.username,
+        phone: user.phone,
+        role: user.role,
+        jurisdiction: user.jurisdiction,
+        authMethod: 'PASSWORD',
+      }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60,
+        path: '/',
+      }
+    )
 
     return response
   } catch (error) {
