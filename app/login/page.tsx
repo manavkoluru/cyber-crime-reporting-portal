@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { TopStrip } from '@/app/components/GovHeader'
 
 function LoginPageContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const next = searchParams.get('next')
   // /chat renders its own "booting" transition, so go there directly. Other
@@ -42,6 +41,11 @@ function LoginPageContent() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Guard against browser autofill + stray Enter submitting an empty form.
+    if (isLoading || !username.trim() || !password) {
+      if (!username.trim() || !password) setError('Enter username and password')
+      return
+    }
     setIsLoading(true)
     setError('')
 
@@ -50,6 +54,8 @@ function LoginPageContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
+        credentials: 'same-origin',
+        cache: 'no-store',
       })
 
       if (!res.ok) {
@@ -59,8 +65,10 @@ function LoginPageContent() {
         return
       }
 
-      setIsLoading(false)
-      router.push(destination)
+      await res.json().catch(() => null)
+      // Full-document navigation so the session cookie is committed before the
+      // destination page's SessionGuard checks /api/auth/me (avoids the loop).
+      window.location.assign(destination)
     } catch (err) {
       setError('Network error. Please try again.')
       setIsLoading(false)
@@ -117,6 +125,8 @@ function LoginPageContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, otp }),
+        credentials: 'same-origin',
+        cache: 'no-store',
       })
 
       if (!res.ok) {
@@ -126,34 +136,24 @@ function LoginPageContent() {
         return
       }
 
-      setIsLoading(false)
-      router.push(destination)
+      await res.json().catch(() => null)
+      // Full-document navigation so the session cookie is committed before the
+      // destination page's SessionGuard checks /api/auth/me (avoids the loop).
+      window.location.assign(destination)
     } catch (err) {
       setError('Network error. Please try again.')
       setIsLoading(false)
     }
   }
 
-  const handleDemoLogin = async (account: typeof demoAccounts[0]) => {
+  // Demo accounts only PREFILL the username/password fields. The user must then
+  // press the Login button, which runs handleLogin with this state. This keeps
+  // the flow explicit — no click ever auto-submits or auto-redirects.
+  const handleDemoSelect = (account: typeof demoAccounts[0]) => {
     setUsername(account.username)
     setPassword(account.password)
+    setError('')
     setShowDemo(false)
-
-    setTimeout(async () => {
-      try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: account.username, password: account.password }),
-        })
-
-        if (res.ok) {
-          router.push(destination)
-        }
-      } catch (err) {
-        setError('Login failed')
-      }
-    }, 300)
   }
 
   return (
@@ -376,6 +376,7 @@ function LoginPageContent() {
             {loginMode === 'username' && (
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <button
+                  type="button"
                   onClick={() => setShowDemo(!showDemo)}
                   className="w-full text-gray-500 hover:text-gray-800 text-sm font-medium transition"
                 >
@@ -384,10 +385,14 @@ function LoginPageContent() {
 
                 {showDemo && (
                   <div className="mt-4 space-y-2">
+                    <p className="text-xs text-gray-500">
+                      Select an account to fill the form, then press <strong>Login</strong>.
+                    </p>
                     {demoAccounts.map((account, i) => (
                       <button
                         key={i}
-                        onClick={() => handleDemoLogin(account)}
+                        type="button"
+                        onClick={() => handleDemoSelect(account)}
                         className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded transition"
                       >
                         <div className="text-sm font-medium text-gray-800">{account.role}</div>
